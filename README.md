@@ -1,3 +1,11 @@
+| API / Service                                         | Free Usage        | Notes / How it helps your project                                                                                        |
+| ----------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Fact Check Tools API**                              | Unlimited         | Fetch verified fact-check articles from ClaimReview sources. You can check claims without paying. ✅ Core for your tool.  |
+| **Programmable Search Engine (Google Custom Search)** | 100 queries/day   | Can search only trusted domains (fact-checkers, gov sites). Helps you ground AI claims. ✅ Useful for evidence retrieval. |
+| **Safe Browsing API**                                 | 10,000 checks/day | Detects phishing, scam, or malicious URLs. Helps flag suspicious links. ✅ Optional safety feature.                       |
+
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
@@ -34,3 +42,7 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+
+
