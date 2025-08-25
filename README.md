@@ -1,10 +1,10 @@
 # MisIntel - AI-Powered Misinformation Detection Tool
 
-![TruthGuard Logo](https://img.shields.io/badge/TruthGuard-AI%20Powered%20Fact%20Checker-blue?style=for-the-badge&logo=shield-check)
+![MisIntel Logo](https://img.shields.io/badge/TruthGuard-AI%20Powered%20Fact%20Checker-blue?style=for-the-badge&logo=shield-check)
 
 ## 🎯 Project Overview
 
-TruthGuard is an innovative, AI-powered solution that helps users combat misinformation by providing comprehensive content verification. Built for the Google Cloud hackathon, this tool goes beyond simple fact-checking to educate users on identifying credible, trustworthy content.
+MisIntel is an innovative, AI-powered solution that helps users combat misinformation by providing comprehensive content verification. Built for the Google Cloud hackathon, this tool goes beyond simple fact-checking to educate users on identifying credible, trustworthy content.
 
 ## ✨ Key Features
 
@@ -27,7 +27,7 @@ TruthGuard is an innovative, AI-powered solution that helps users combat misinfo
 ## 🏗️ Architecture
 
 ```
-TruthGuard/
+MisIntel/
 ├── Frontend (Next.js)
 │   ├── Hero Section with animated effects
 │   ├── Fact Check Tool with 3 input types
@@ -76,7 +76,7 @@ TruthGuard/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/truthguard.git
+   git clone https://github.com/yourusername/misintel.git
    cd truthguard
    ```
 
@@ -247,12 +247,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact
 
-- **Project**: [TruthGuard GitHub](https://github.com/yourusername/truthguard)
-- **Email**: support@truthguard.ai
-- **Website**: [truthguard.ai](https://truthguard.ai)
+- **Project**: [MisIntel GitHub](https://github.com/yourusername/misintel)
+- **Email**: support@misintel.ai
+- **Website**: [misintel.ai](https://misintel.ai)
 
 ---
 
 **Built with ❤️ for a more informed world**
 
-*TruthGuard - Your AI-powered shield against misinformation*
+*MisIntel - Your AI-powered shield against misinformation*
