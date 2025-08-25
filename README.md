@@ -1,4 +1,4 @@
-# TruthGuard - AI-Powered Misinformation Detection Tool
+# MisIntel - AI-Powered Misinformation Detection Tool
 
 ![TruthGuard Logo](https://img.shields.io/badge/TruthGuard-AI%20Powered%20Fact%20Checker-blue?style=for-the-badge&logo=shield-check)
 
