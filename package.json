@@ -1,27 +1,38 @@
 {
-  "name": "proj-next",
+  "name": "truthguard-misinformation-detector",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.4.6"
+    "@google/generative-ai": "^0.17.1",
+    "@splinetool/react-spline": "^4.1.0",
+    "@splinetool/runtime": "^1.10.51",
+    "@tabler/icons-react": "^3.34.1",
+    "@types/three": "^0.179.0",
+    "autoprefixer": "^10.4.21",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.3.28",
+    "lucide-react": "^0.540.0",
+    "motion": "^12.23.12",
+    "next": "14.2.5",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwind-merge": "^2.6.0",
+    "three": "^0.179.1"
   },
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
-    "eslint": "^9",
-    "eslint-config-next": "15.4.6",
-    "@eslint/eslintrc": "^3"
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5"
   }
 }
