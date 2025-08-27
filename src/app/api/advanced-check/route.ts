@@ -313,9 +313,9 @@ Return ONLY a valid JSON response with no additional text:
       const genAI = new GoogleGenerativeAI(apiKey);
       let model;
       try {
-        model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       } catch {
-        model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       }
       const result = await model.generateContent(comprehensivePrompt);
       const response = await result.response;

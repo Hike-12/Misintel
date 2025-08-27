@@ -6,8 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
-  },
+    "lint": "next lint",
+    "build:popup-css": "npx tailwindcss -i ./public/popup.css -o ./public/popup.css --minify"
+},
   "dependencies": {
     "@google/generative-ai": "^0.17.1",
     "@splinetool/react-spline": "^4.1.0",
