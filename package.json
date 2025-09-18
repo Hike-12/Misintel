@@ -11,7 +11,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.17.1",
     "@splinetool/react-spline": "^4.1.0",
-    "@splinetool/runtime": "^1.10.51",
+    "@splinetool/runtime": "^1.10.52",
     "@tabler/icons-react": "^3.34.1",
     "@types/three": "^0.179.0",
     "autoprefixer": "^10.4.21",
