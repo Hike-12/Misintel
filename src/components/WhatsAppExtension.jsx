@@ -16,7 +16,7 @@ export default function WhatsAppExtension() {
             <div className="w-full h-64 flex items-center justify-center bg-neutral-900/30 rounded-xl mb-4">
               {/* Replace src with your WhatsApp bot image */}
               <img
-                src="/images/whatsapp-bot.png"
+                src="/whatsapp-bot.png"
                 alt="WhatsApp Bot"
                 className="max-h-56 rounded-lg object-contain"
               />
@@ -33,7 +33,7 @@ export default function WhatsAppExtension() {
             <div className="w-full h-64 flex items-center justify-center bg-neutral-900/30 rounded-xl mb-4">
               {/* Replace src with your Web Extension image */}
               <img
-                src="/images/web-extension.png"
+                src="/web-extension.png"
                 alt="Web Extension"
                 className="max-h-56 rounded-lg object-contain"
               />
