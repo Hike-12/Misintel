@@ -15,18 +15,27 @@ type AnalysisResult = {
   inputUrl?: string;
 };
 
+// --- CORS handler ---
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
+
 // Helper function to call Fact Check Tools API
 async function getFactCheckResults(query: string) {
-  const apiKey = process.env.FACT_GEMINI_API_KEY; // Changed
-  
+  const apiKey = process.env.FACT_GEMINI_API_KEY;
   try {
     const response = await fetch(`https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${encodeURIComponent(query)}&key=${apiKey}`);
-    
     if (!response.ok) {
       console.log('❌ Fact Check API failed:', response.status);
       return [];
     }
-    
     const data = await response.json();
     return data.claims || [];
   } catch (error) {
@@ -37,22 +46,18 @@ async function getFactCheckResults(query: string) {
 
 // Helper function to call Google Custom Search API
 async function getCustomSearchResults(query: string) {
-  const apiKey = process.env.CUSTOM_SEARCH_API_KEY; // Changed
+  const apiKey = process.env.CUSTOM_SEARCH_API_KEY;
   const cx = process.env.CUSTOM_SEARCH_ENGINE_ID;
-  
   if (!cx) {
     console.log('⚠️ Custom Search Engine ID not configured');
     return [];
   }
-  
   try {
     const response = await fetch(`https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${encodeURIComponent(query)}&num=5`);
-    
     if (!response.ok) {
       console.log('❌ Custom Search API failed:', response.status);
       return [];
     }
-    
     const data = await response.json();
     return data.items || [];
   } catch (error) {
@@ -63,8 +68,7 @@ async function getCustomSearchResults(query: string) {
 
 // Helper function to call Safe Browsing API
 async function checkUrlSafety(url: string) {
-  const apiKey = process.env.SAFE_BROWSING_API_KEY; // Changed
-  
+  const apiKey = process.env.SAFE_BROWSING_API_KEY;
   try {
     const response = await fetch(`https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${apiKey}`, {
       method: 'POST',
@@ -86,12 +90,10 @@ async function checkUrlSafety(url: string) {
         }
       })
     });
-    
     if (!response.ok) {
       console.log('❌ Safe Browsing API failed:', response.status);
       return { safe: true, threats: [] };
     }
-    
     const data = await response.json();
     return {
       safe: !data.matches || data.matches.length === 0,
@@ -111,13 +113,10 @@ async function extractUrlContent(url: string): Promise<string> {
         'User-Agent': 'TruthGuard-Bot/1.0'
       }
     });
-    
     if (!response.ok) {
       throw new Error(`Failed to fetch URL: ${response.status}`);
     }
-    
     const html = await response.text();
-    
     const textContent = html
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
       .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
@@ -125,7 +124,6 @@ async function extractUrlContent(url: string): Promise<string> {
       .replace(/\s+/g, ' ')
       .trim()
       .substring(0, 2000);
-    
     return textContent;
   } catch (error) {
     console.error('Error extracting URL content:', error);
@@ -135,69 +133,104 @@ async function extractUrlContent(url: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   console.log('🚀 Advanced API Request received');
-
-  const apiKey = process.env.FACT_GEMINI_API_KEY; // Changed
-  
+  const apiKey = process.env.FACT_GEMINI_API_KEY;
   if (!apiKey) {
     console.error('❌ No API key found');
-    return NextResponse.json({
-      error: "Server configuration error", 
-      isFake: false,
-      confidence: 0,
-      summary: "API key not configured",
-      reasons: ["Google API key missing from environment variables"]
-    }, { status: 500 });
+    return new Response(
+      JSON.stringify({
+        error: "Server configuration error",
+        isFake: false,
+        confidence: 0,
+        summary: "API key not configured",
+        reasons: ["Google API key missing from environment variables"]
+      }),
+      {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      }
+    );
   }
 
   try {
     const formData = await req.formData();
     const type = formData.get('type') as string;
     const input = formData.get('input') as string;
-    
     console.log('📝 Request type:', type, 'Input length:', input?.length || 0);
 
     let contentToAnalyze = '';
     let urlToCheck = '';
-    
+
     if (type === 'image') {
       const file = formData.get('file') as File;
       if (!file) {
-        return NextResponse.json({
-          error: "Missing input",
-          isFake: false,
-          confidence: 0,
-          summary: "No image file provided",
-          reasons: ["Image upload required for image analysis"]
-        }, { status: 400 });
+        return new Response(
+          JSON.stringify({
+            error: "Missing input",
+            isFake: false,
+            confidence: 0,
+            summary: "No image file provided",
+            reasons: ["Image upload required for image analysis"]
+          }),
+          {
+            status: 400,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type",
+            },
+          }
+        );
       }
       contentToAnalyze = 'Image analysis - content extraction from uploaded image';
     } else if (type === 'url') {
       if (!input?.trim()) {
-        return NextResponse.json({
-          error: "Missing input",
-          isFake: false,
-          confidence: 0,
-          summary: "No URL provided",
-          reasons: ["URL input is required"]
-        }, { status: 400 });
+        return new Response(
+          JSON.stringify({
+            error: "Missing input",
+            isFake: false,
+            confidence: 0,
+            summary: "No URL provided",
+            reasons: ["URL input is required"]
+          }),
+          {
+            status: 400,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type",
+            },
+          }
+        );
       }
-      
       urlToCheck = input.trim();
       console.log('🔗 Extracting content from URL...');
       contentToAnalyze = await extractUrlContent(urlToCheck);
-      
       if (!contentToAnalyze) {
         contentToAnalyze = `URL content analysis: ${urlToCheck}`;
       }
     } else {
       if (!input?.trim()) {
-        return NextResponse.json({
-          error: "Missing input",
-          isFake: false,
-          confidence: 0,
-          summary: "No content provided",
-          reasons: ["Text input is required"]
-        }, { status: 400 });
+        return new Response(
+          JSON.stringify({
+            error: "Missing input",
+            isFake: false,
+            confidence: 0,
+            summary: "No content provided",
+            reasons: ["Text input is required"]
+          }),
+          {
+            status: 400,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "POST, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type",
+            },
+          }
+        );
       }
       contentToAnalyze = input.trim();
     }
@@ -223,16 +256,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Step 4: Prepare comprehensive prompt for Gemini (API 4)
-    const factCheckSummary = factCheckResults.length > 0 
+    const factCheckSummary = factCheckResults.length > 0
       ? factCheckResults.map((claim: { text: any; claimant: any; claimReview: any[]; }) => ({
-          claim: claim.text,
-          claimant: claim.claimant,
-          reviewers: claim.claimReview?.map((review: any) => ({
-            publisher: review.publisher?.name,
-            rating: review.textualRating,
-            url: review.url
-          })) || []
-        }))
+        claim: claim.text,
+        claimant: claim.claimant,
+        reviewers: claim.claimReview?.map((review: any) => ({
+          publisher: review.publisher?.name,
+          rating: review.textualRating,
+          url: review.url
+        })) || []
+      }))
       : [];
 
     const searchSummary = searchResults.map((item: { title: any; snippet: any; link: any; displayLink: any; }) => ({
@@ -276,93 +309,76 @@ Return ONLY a valid JSON response with no additional text:
 
     // Step 5: Call Gemini API with comprehensive analysis
     console.log('🤖 Calling Gemini API for comprehensive analysis...');
-    
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      
       let model;
       try {
-        model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       } catch {
-        model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       }
-
       const result = await model.generateContent(comprehensivePrompt);
       const response = await result.response;
       const text = response.text();
-      
       console.log('📥 Gemini response received, length:', text.length);
 
       // Parse the JSON response
       let analysis: AnalysisResult;
-      
       try {
         let jsonString = text.trim();
-        
         if (jsonString.includes('```')) {
           const jsonMatch = jsonString.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
           if (jsonMatch) {
             jsonString = jsonMatch[1];
           }
         }
-        
         const jsonStart = jsonString.indexOf('{');
         const jsonEnd = jsonString.lastIndexOf('}') + 1;
-        
         if (jsonStart !== -1 && jsonEnd > jsonStart) {
           jsonString = jsonString.slice(jsonStart, jsonEnd);
         }
-        
         const parsed = JSON.parse(jsonString);
-        
         analysis = {
           isFake: Boolean(parsed.isFake),
           confidence: Math.min(95, Math.max(60, Number(parsed.confidence) || 75)),
           summary: String(parsed.summary || "Multi-source analysis completed"),
           reasons: Array.isArray(parsed.reasons) ? parsed.reasons : ["Analysis completed using multiple verification sources"],
-          sources: Array.isArray(parsed.sources) && parsed.sources.length > 0 
-            ? parsed.sources 
+          sources: Array.isArray(parsed.sources) && parsed.sources.length > 0
+            ? parsed.sources
             : [...new Set([
-                ...factCheckResults.slice(0, 2).map((claim: any) => 
-                  claim.claimReview?.[0]?.url
-                ).filter(Boolean),
-                ...searchResults.slice(0, 2).map((item: string) => item.link).filter(Boolean),
-                "https://www.factcheck.org",
-                "https://www.snopes.com"
-              ])].slice(0, 4),
+              ...factCheckResults.slice(0, 2).map((claim: any) =>
+                claim.claimReview?.[0]?.url
+              ).filter(Boolean),
+              ...searchResults.slice(0, 2).map((item: string) => item.link).filter(Boolean),
+              "https://www.factcheck.org",
+              "https://www.snopes.com"
+            ])].slice(0, 4),
           factCheckResults: factCheckSummary.slice(0, 3),
           safetyCheck: safetyCheck,
           customSearchResults: searchSummary.slice(0, 3),
           inputText: type === 'text' ? contentToAnalyze : undefined,
           inputUrl: type === 'url' ? urlToCheck : undefined
         };
-        
         if (!safetyCheck.safe && safetyCheck.threats.length > 0) {
           analysis.reasons.unshift('URL flagged as potentially unsafe by security systems');
           analysis.isFake = true;
           analysis.confidence = Math.max(analysis.confidence, 85);
         }
-        
         console.log('✅ Comprehensive analysis successful');
-        
       } catch (parseError) {
         console.error('❌ JSON parsing failed:', parseError);
-        
-        const hasNegativeFactChecks = factCheckResults.some((claim: any) => 
-          claim.claimReview?.some((review: any) => 
+        const hasNegativeFactChecks = factCheckResults.some((claim: any) =>
+          claim.claimReview?.some((review: any) =>
             review.textualRating?.toLowerCase().includes('false') ||
             review.textualRating?.toLowerCase().includes('misleading')
           )
         );
-        
         const looksSpammy = /shocking|unbelievable|doctors hate|miracle|secret|breaking|urgent|click here|you won't believe|this will amaze/i.test(contentToAnalyze);
-        
         const isFakeContent = hasNegativeFactChecks || looksSpammy || !safetyCheck.safe;
-        
         analysis = {
           isFake: isFakeContent,
           confidence: 75,
-          summary: isFakeContent 
+          summary: isFakeContent
             ? "Content flagged by multiple verification systems as potentially misleading"
             : "Content passed basic verification checks across multiple sources",
           reasons: [
@@ -383,48 +399,76 @@ Return ONLY a valid JSON response with no additional text:
         };
       }
 
-      return NextResponse.json(analysis);
+      return new Response(
+        JSON.stringify(analysis),
+        {
+          status: 200,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+          },
+        }
+      );
 
     } catch (geminiError: any) {
       console.error('❌ Gemini API Error:', geminiError);
-      
-      const hasNegativeFactChecks = factCheckResults.some((claim: any) => 
-        claim.claimReview?.some((review: any) => 
+      const hasNegativeFactChecks = factCheckResults.some((claim: any) =>
+        claim.claimReview?.some((review: any) =>
           review.textualRating?.toLowerCase().includes('false')
         )
       );
-      
-      return NextResponse.json({
-        error: "AI Analysis partially failed",
-        isFake: hasNegativeFactChecks || !safetyCheck.safe,
-        confidence: hasNegativeFactChecks || !safetyCheck.safe ? 70 : 60,
-        summary: hasNegativeFactChecks 
-          ? "Fact-checking databases found similar false claims" 
-          : !safetyCheck.safe 
-          ? "URL flagged as unsafe"
-          : "Basic verification completed, AI analysis unavailable",
-        reasons: [
-          ...(hasNegativeFactChecks ? ["Similar claims previously debunked"] : []),
-          ...(!safetyCheck.safe ? ["URL security concerns"] : []),
-          "AI analysis service temporarily unavailable"
-        ],
-        factCheckResults: factCheckSummary.slice(0, 3),
-        safetyCheck: safetyCheck,
-        customSearchResults: searchSummary.slice(0, 3)
-      });
+      return new Response(
+        JSON.stringify({
+          error: "AI Analysis partially failed",
+          isFake: hasNegativeFactChecks || !safetyCheck.safe,
+          confidence: hasNegativeFactChecks || !safetyCheck.safe ? 70 : 60,
+          summary: hasNegativeFactChecks
+            ? "Fact-checking databases found similar false claims"
+            : !safetyCheck.safe
+              ? "URL flagged as unsafe"
+              : "Basic verification completed, AI analysis unavailable",
+          reasons: [
+            ...(hasNegativeFactChecks ? ["Similar claims previously debunked"] : []),
+            ...(!safetyCheck.safe ? ["URL security concerns"] : []),
+            "AI analysis service temporarily unavailable"
+          ],
+          factCheckResults: factCheckSummary.slice(0, 3),
+          safetyCheck: safetyCheck,
+          customSearchResults: searchSummary.slice(0, 3)
+        }),
+        {
+          status: 200,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+          },
+        }
+      );
     }
 
   } catch (error: any) {
     console.error('❌ Server error:', error);
-    return NextResponse.json({
-      error: "Server error",
-      isFake: false,
-      confidence: 0,
-      summary: "Internal server error occurred",
-      reasons: [
-        error?.message || "Unknown server error",
-        "Please try again later"
-      ]
-    }, { status: 500 });
+    return new Response(
+      JSON.stringify({
+        error: "Server error",
+        isFake: false,
+        confidence: 0,
+        summary: "Internal server error occurred",
+        reasons: [
+          error?.message || "Unknown server error",
+          "Please try again later"
+        ]
+      }),
+      {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      }
+    );
   }
 }

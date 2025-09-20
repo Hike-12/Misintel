@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Misintel Extension",
+  "version": "1.0",
+  "description": "Fact-check tool as a Chrome extension.",
+  "action": {
+    "default_popup": "public/popup.html"
+  },
+  "permissions": ["activeTab"]
+}

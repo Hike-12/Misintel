@@ -6,8 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
-  },
+    "lint": "next lint",
+    "build:popup-css": "npx tailwindcss -i ./public/popup.css -o ./public/popup.css --minify"
+},
   "dependencies": {
     "@google/generative-ai": "^0.17.1",
     "@splinetool/react-spline": "^4.1.0",
@@ -26,13 +27,15 @@
     "three": "^0.179.1"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
+    "@types/node": "20.19.11",
+    "@types/react": "18.3.24",
     "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^5.0.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^7.1.3"
   }
 }

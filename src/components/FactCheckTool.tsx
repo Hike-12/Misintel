@@ -61,7 +61,11 @@ function FactCheckTool() {
         formData.append('input', input.trim());
       }
 
-      const response = await fetch('/api/advanced-check', {
+      const apiBase =
+  window.location.protocol === "chrome-extension:"
+    ? "http://localhost:3000"
+    : process.env.NEXT_PUBLIC_API_URL || "";
+      const response = await fetch(`${apiBase}/api/advanced-check`, {
         method: 'POST',
         body: formData,
       });
