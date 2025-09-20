@@ -20,9 +20,7 @@ function FactCheckTool() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<AnalysisResult[]>([]);
-  const [inputType, setInputType] = useState<'text' | 'url' | 'image'>('text');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [inputType, setInputType] = useState<'text' | 'url'>('text');
 
   function isValidUrl(url: string) {
     try {
@@ -40,10 +38,6 @@ function FactCheckTool() {
     setLoading(true);
 
     try {
-      if (inputType === 'image' && !selectedFile) {
-        throw new Error('Please upload an image');
-      }
-      
       if ((inputType === 'text' || inputType === 'url') && !input.trim()) {
         throw new Error(inputType === 'url' ? 'Please enter a URL' : 'Please enter some text');
       }
@@ -54,17 +48,12 @@ function FactCheckTool() {
 
       const formData = new FormData();
       formData.append('type', inputType);
-      
-      if (inputType === 'image' && selectedFile) {
-        formData.append('file', selectedFile);
-      } else {
-        formData.append('input', input.trim());
-      }
+      formData.append('input', input.trim());
 
       const apiBase =
-  window.location.protocol === "chrome-extension:"
-    ? "http://localhost:3000"
-    : process.env.NEXT_PUBLIC_API_URL || "";
+        window.location.protocol === "chrome-extension:"
+          ? "http://localhost:3000"
+          : process.env.NEXT_PUBLIC_API_URL || "";
       const response = await fetch(`${apiBase}/api/advanced-check`, {
         method: 'POST',
         body: formData,
@@ -106,55 +95,33 @@ function FactCheckTool() {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
-        return;
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
-        return;
-      }
-      
-      setSelectedFile(file);
-      
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-      setPreviewUrl(URL.createObjectURL(file));
-      setInput(file.name);
-    }
-  };
-
-  const clearPreview = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl('');
-    }
-    setSelectedFile(null);
-    setInput('');
-  };
-
-  const handleInputTypeChange = (newType: 'text' | 'url' | 'image') => {
+  const handleInputTypeChange = (newType: 'text' | 'url') => {
     setInputType(newType);
     setInput('');
-    clearPreview();
     setResult(null);
   };
 
-  const copyToClipboard = async () => {
+  const shareResults = async () => {
     if (!result) return;
-    
-    const shareText = `${input || selectedFile?.name || 'Content'}\n\nVerified: ${result.isFake ? 'Likely False' : 'Likely True'} (${result.confidence}% confidence)\n\nSummary: ${result.summary}`;
-    
-    try {
-      await navigator.clipboard.writeText(shareText);
-      alert('Results copied to clipboard!');
-    } catch (error) {
-      alert('Failed to copy to clipboard');
+
+    const shareText = `${input || 'Content'}\n\nVerified: ${result.isFake ? 'Likely False' : 'Likely True'} (${result.confidence}% confidence)\n\nSummary: ${result.summary}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Fact Check Result',
+          text: shareText,
+        });
+      } catch (error) {
+        alert('Sharing cancelled or failed.');
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        alert('Results copied to clipboard!');
+      } catch (error) {
+        alert('Failed to copy to clipboard');
+      }
     }
   };
 
@@ -175,7 +142,7 @@ function FactCheckTool() {
             AI-Powered Fact Checker
           </h2>
           <p className="text-neutral-400 text-lg max-w-2xl mx-auto">
-            Enter text, URL, or upload an image to verify its authenticity using multiple AI models and fact-checking sources.
+            Enter text or URL to verify its authenticity using multiple AI models and fact-checking sources.
           </p>
         </div>
 
@@ -184,7 +151,7 @@ function FactCheckTool() {
           
           {/* Input Type Selection */}
           <div className="flex gap-3 mb-6 justify-center">
-            {(['text', 'url', 'image'] as const).map((type) => (
+            {(['text', 'url'] as const).map((type) => (
               <button
                 key={type}
                 onClick={() => handleInputTypeChange(type)}
@@ -201,50 +168,18 @@ function FactCheckTool() {
 
           {/* Input Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {inputType === 'image' ? (
-              <div className="flex flex-col items-center justify-center">
-                <label className="flex flex-col items-center justify-center w-full h-40 border border-neutral-700 border-dashed rounded-lg cursor-pointer bg-neutral-900/30 hover:bg-neutral-800/30 transition-all duration-200">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <svg className="w-8 h-8 mb-3 text-neutral-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                      <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                    </svg>
-                    <p className="text-sm text-neutral-400">Click to upload image</p>
-                    <p className="text-xs text-neutral-500 mt-1">PNG, JPG, GIF (MAX. 5MB)</p>
-                  </div>
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    onChange={handleFileChange}
-                    accept="image/*"
-                  />
-                </label>
-                {previewUrl && (
-                  <div className="mt-4 relative">
-                    <img src={previewUrl} alt="Preview" className="max-h-40 rounded-lg" />
-                    <button
-                      type="button"
-                      onClick={clearPreview}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <textarea
-                className="w-full p-4 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-neutral-500/20 focus:border-neutral-500 transition-all duration-200 bg-neutral-900/30 text-neutral-100 placeholder-neutral-500 text-sm resize-none"
-                rows={inputType === 'text' ? 4 : 2}
-                placeholder={inputType === 'text' ? "Paste text to verify..." : "Enter URL to verify..."}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                required={inputType === 'text' || inputType === 'url'}
-              />
-            )}
+            <textarea
+              className="w-full p-4 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-neutral-500/20 focus:border-neutral-500 transition-all duration-200 bg-neutral-900/30 text-neutral-100 placeholder-neutral-500 text-sm resize-none"
+              rows={inputType === 'text' ? 4 : 2}
+              placeholder={inputType === 'text' ? "Paste text to verify..." : "Enter URL to verify..."}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              required={inputType === 'text' || inputType === 'url'}
+            />
 
             <button
               type="submit"
-              disabled={loading || (!input.trim() && !selectedFile)}
+              disabled={loading || !input.trim()}
               className="w-full bg-gradient-to-b from-neutral-50 to-neutral-400 hover:from-neutral-100 hover:to-neutral-300 disabled:from-neutral-700 disabled:to-neutral-800 text-black font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center text-sm disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -318,7 +253,7 @@ function FactCheckTool() {
                   
                   {result.confidence > 0 && (
                     <button
-                      onClick={copyToClipboard}
+                      onClick={shareResults}
                       className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-200 rounded-lg transition-all duration-200 text-xs font-medium"
                     >
                       Share Results
@@ -347,7 +282,7 @@ function FactCheckTool() {
                 >
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-neutral-300 truncate flex-1">
-                      {item.inputText || item.inputUrl || 'Image analysis'}
+                      {item.inputText || item.inputUrl || 'Content analysis'}
                     </p>
                     {item.confidence > 0 && (
                       <span className={`text-xs font-medium ml-2 ${

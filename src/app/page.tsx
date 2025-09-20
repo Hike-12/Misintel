@@ -4,6 +4,7 @@ import HeroSection from '@/components/HeroSection';
 import FactCheckTool from '@/components/FactCheckTool';
 import FeaturedStats from '@/components/FeaturedStats';
 import WhyTruthGuard from '@/components/WhyTruthGuard';
+import WhatsAppExtension from '@/components/WhatsAppExtension';
 import Footer from '@/components/Footer';
 
 export default function Home() {
@@ -19,6 +20,10 @@ export default function Home() {
           <FactCheckTool />
         </section>
         
+        <section id="features">
+          <WhatsAppExtension />
+        </section>
+
         <section id="features">
           <FeaturedStats />
         </section>
