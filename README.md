@@ -76,7 +76,7 @@ MisIntel/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/misintel.git
+   git clone https://github.com/Hike-12/Misintel.git
    cd misintel
    ```
 
