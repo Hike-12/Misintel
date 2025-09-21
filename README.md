@@ -77,7 +77,7 @@ MisIntel/
 1. **Clone the repository**
    ```bash
    git clone https://github.com/yourusername/misintel.git
-   cd truthguard
+   cd misintel
    ```
 
 2. **Install dependencies**
@@ -90,8 +90,21 @@ MisIntel/
 3. **Environment Setup**
    Create a `.env.local` file:
    ```env
-   GOOGLE_API_KEY=your_google_api_key_here
+   # --- Fact Check + Gemini API Key (combined) ---
+   FACT_GEMINI_API_KEY=your_fact_gemini_api_key_here
+
+   # --- Safe Browsing ---
+   SAFE_BROWSING_API_KEY=your_safebrowsing_api_key_here
+
+   # --- Custom Search ---
+   CUSTOM_SEARCH_API_KEY=your_customsearch_api_key_here
    GOOGLE_CUSTOM_SEARCH_ENGINE_ID=your_search_engine_id
+
+   # --- App Config ---
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+   The first key (FACT_GEMINI_API_KEY) is used for both Fact Check and Gemini services, so you only need to generate and set one key.
+   Replace all placeholders with your actual API keys.
    ```
 
 4. **Run the development server**
@@ -141,12 +154,7 @@ MisIntel/
 - Extract and verify content
 - Check URL safety and reputation
 
-### 3. Image Verification
-- Upload images for analysis
-- Deepfake detection capabilities
-- Visual content verification
-
-### 4. Multi-Model Analysis
+### 3. Multi-Model Analysis
 - Combines results from 4 AI models
 - Confidence scoring system
 - Detailed reasoning and sources
@@ -179,7 +187,7 @@ MisIntel/
 
 ## 🔍 How It Works
 
-1. **Input Processing**: User provides text, URL, or image
+1. **Input Processing**: User provides text or URL
 2. **Multi-API Analysis**: Content analyzed by 4 different AI models
 3. **Cross-Referencing**: Results compared across fact-check databases
 4. **AI Synthesis**: Gemini AI provides comprehensive analysis
@@ -190,7 +198,6 @@ MisIntel/
 
 ### Visual Design
 - **Modern Aesthetic**: Clean, professional interface
-- **Color Psychology**: Blue for trust, purple for innovation
 - **Typography**: Clear, readable fonts with proper hierarchy
 - **Spacing**: Generous whitespace for better readability
 
@@ -211,13 +218,6 @@ MisIntel/
 - **Netlify**: Static site deployment
 - **AWS Amplify**: Full-stack deployment
 - **Google Cloud Run**: Containerized deployment
-
-## 📊 Performance Metrics
-
-- **Page Load**: < 2 seconds
-- **API Response**: < 3 seconds
-- **Image Processing**: < 5 seconds
-- **Mobile Performance**: 95+ Lighthouse score
 
 ## 🔒 Privacy & Security
 
