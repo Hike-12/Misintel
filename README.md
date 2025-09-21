@@ -4,7 +4,7 @@
 
 ## 🎯 Project Overview
 
-MisIntel is an innovative, AI-powered solution that helps users combat misinformation by providing comprehensive content verification. Built for the Google Cloud hackathon, this tool goes beyond simple fact-checking to educate users on identifying credible, trustworthy content.
+MisIntel is an innovative, AI-powered solution that helps users combat misinformation by providing comprehensive content verification. Built for the Google Gen-AI hackathon, this tool goes beyond simple fact-checking to educate users on identifying credible, trustworthy content.
 
 ## ✨ Key Features
 
