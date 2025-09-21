@@ -4,13 +4,13 @@
 
 ## 🎯 Project Overview
 
-MisIntel is an innovative, AI-powered solution that helps users combat misinformation by providing comprehensive content verification. Built for the Google Gen-AI hackathon, this tool goes beyond simple fact-checking to educate users on identifying credible, trustworthy content.
+MisIntel is an innovative, AI-powered solution that helps users combat misinformation by providing comprehensive content verification. Built for the Google Gen-AI exchange hackathon, this tool goes beyond simple fact-checking to educate users on identifying credible, trustworthy content.
 
 ## ✨ Key Features
 
-- **Multi-Input Support**: Verify text, URLs, and images
+- **Multi-Input Support**: Verify text and URLs
 - **4 AI Models Integration**: Google Fact Check, Custom Search, Safe Browsing, and Gemini AI
-- **Real-time Analysis**: Get results in under 3 seconds
+- **Real-time Analysis**: Get results in under seconds
 - **Educational Insights**: Learn why content is flagged with detailed explanations
 - **Privacy-First**: No data storage, complete user anonymity
 - **Responsive Design**: Beautiful UI built with Aceternity UI components
@@ -169,7 +169,7 @@ MisIntel/
 
 ### Enhanced Features ✅
 - [x] Beautiful Aceternity UI components
-- [x] Multiple input types (text, URL, image)
+- [x] Multiple input types (text, URL)
 - [x] "Why flagged?" explanations
 - [x] Traffic light confidence system
 - [x] History tab with localStorage
