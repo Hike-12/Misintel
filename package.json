@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "build:popup-css": "npx tailwindcss -i ./public/popup.css -o ./public/popup.css --minify"
-},
+  },
   "dependencies": {
     "@google/generative-ai": "^0.17.1",
     "@splinetool/react-spline": "^4.1.0",
@@ -16,6 +16,7 @@
     "@tabler/icons-react": "^3.34.1",
     "@types/three": "^0.179.0",
     "autoprefixer": "^10.4.21",
+    "axios": "^1.12.2",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.28",
     "lucide-react": "^0.540.0",
@@ -24,7 +25,8 @@
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^2.6.0",
-    "three": "^0.179.1"
+    "three": "^0.179.1",
+    "twilio": "^5.10.0"
   },
   "devDependencies": {
     "@types/node": "20.19.11",
