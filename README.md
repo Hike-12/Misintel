@@ -141,11 +141,6 @@ MisIntel/
 - Extract and verify content
 - Check URL safety and reputation
 
-### 3. Image Verification
-- Upload images for analysis
-- Deepfake detection capabilities
-- Visual content verification
-
 ### 4. Multi-Model Analysis
 - Combines results from 4 AI models
 - Confidence scoring system
@@ -161,7 +156,7 @@ MisIntel/
 
 ### Enhanced Features ✅
 - [x] Beautiful Aceternity UI components
-- [x] Multiple input types (text, URL, image)
+- [x] Multiple input types (text, URL)
 - [x] "Why flagged?" explanations
 - [x] Traffic light confidence system
 - [x] History tab with localStorage
