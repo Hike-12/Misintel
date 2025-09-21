@@ -4,13 +4,13 @@
 
 ## 🎯 Project Overview
 
-MisIntel is an innovative, AI-powered solution that helps users combat misinformation by providing comprehensive content verification. Built for the Google Cloud hackathon, this tool goes beyond simple fact-checking to educate users on identifying credible, trustworthy content.
+MisIntel is an innovative, AI-powered solution that helps users combat misinformation by providing comprehensive content verification. Built for the Google Gen-AI exchange hackathon, this tool goes beyond simple fact-checking to educate users on identifying credible, trustworthy content.
 
 ## ✨ Key Features
 
-- **Multi-Input Support**: Verify text, URLs, and images
+- **Multi-Input Support**: Verify text and URLs
 - **4 AI Models Integration**: Google Fact Check, Custom Search, Safe Browsing, and Gemini AI
-- **Real-time Analysis**: Get results in under 3 seconds
+- **Real-time Analysis**: Get results in under seconds
 - **Educational Insights**: Learn why content is flagged with detailed explanations
 - **Privacy-First**: No data storage, complete user anonymity
 - **Responsive Design**: Beautiful UI built with Aceternity UI components
@@ -77,7 +77,7 @@ MisIntel/
 1. **Clone the repository**
    ```bash
    git clone https://github.com/yourusername/misintel.git
-   cd truthguard
+   cd misintel
    ```
 
 2. **Install dependencies**
@@ -90,8 +90,21 @@ MisIntel/
 3. **Environment Setup**
    Create a `.env.local` file:
    ```env
-   GOOGLE_API_KEY=your_google_api_key_here
+   # --- Fact Check + Gemini API Key (combined) ---
+   FACT_GEMINI_API_KEY=your_fact_gemini_api_key_here
+
+   # --- Safe Browsing ---
+   SAFE_BROWSING_API_KEY=your_safebrowsing_api_key_here
+
+   # --- Custom Search ---
+   CUSTOM_SEARCH_API_KEY=your_customsearch_api_key_here
    GOOGLE_CUSTOM_SEARCH_ENGINE_ID=your_search_engine_id
+
+   # --- App Config ---
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+   The first key (FACT_GEMINI_API_KEY) is used for both Fact Check and Gemini services, so you only need to generate and set one key.
+   Replace all placeholders with your actual API keys.
    ```
 
 4. **Run the development server**
@@ -174,7 +187,7 @@ MisIntel/
 
 ## 🔍 How It Works
 
-1. **Input Processing**: User provides text, URL, or image
+1. **Input Processing**: User provides text or URL
 2. **Multi-API Analysis**: Content analyzed by 4 different AI models
 3. **Cross-Referencing**: Results compared across fact-check databases
 4. **AI Synthesis**: Gemini AI provides comprehensive analysis
@@ -185,7 +198,6 @@ MisIntel/
 
 ### Visual Design
 - **Modern Aesthetic**: Clean, professional interface
-- **Color Psychology**: Blue for trust, purple for innovation
 - **Typography**: Clear, readable fonts with proper hierarchy
 - **Spacing**: Generous whitespace for better readability
 
@@ -206,13 +218,6 @@ MisIntel/
 - **Netlify**: Static site deployment
 - **AWS Amplify**: Full-stack deployment
 - **Google Cloud Run**: Containerized deployment
-
-## 📊 Performance Metrics
-
-- **Page Load**: < 2 seconds
-- **API Response**: < 3 seconds
-- **Image Processing**: < 5 seconds
-- **Mobile Performance**: 95+ Lighthouse score
 
 ## 🔒 Privacy & Security
 
