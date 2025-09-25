@@ -10,7 +10,7 @@
     "build:popup-css": "npx tailwindcss -i ./public/popup.css -o ./public/popup.css --minify"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.17.1",
+    "@google/generative-ai": "^0.24.1",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.10.51",
     "@tabler/icons-react": "^3.34.1",
