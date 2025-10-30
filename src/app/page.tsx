@@ -6,6 +6,7 @@ import FeaturedStats from '@/components/FeaturedStats';
 import WhyTruthGuard from '@/components/WhyTruthGuard';
 import WhatsAppExtension from '@/components/WhatsAppExtension';
 import Footer from '@/components/Footer';
+import TrendingNews from '@/components/TrendingNews';
 
 export default function Home() {
   return (
@@ -18,6 +19,10 @@ export default function Home() {
         
         <section id="fact-checker">
           <FactCheckTool />
+        </section>
+
+        <section id="trending-news">
+          <TrendingNews />
         </section>
         
         <section id="features">

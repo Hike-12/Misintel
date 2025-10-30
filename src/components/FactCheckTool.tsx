@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from "@/utils/cn";
 
 type AnalysisResult = {
@@ -31,6 +31,38 @@ function FactCheckTool() {
     }
   }
 
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const prefill = localStorage.getItem('misintel_prefill');
+      const prefillType = localStorage.getItem('misintel_prefill_type');
+      
+      if (prefill && prefillType) {
+        setInput(prefill);
+        setInputType(prefillType as 'text' | 'url');
+        localStorage.removeItem('misintel_prefill');
+        localStorage.removeItem('misintel_prefill_type');
+      }
+    } catch (e) {
+      console.error('Failed to load prefill:', e);
+    }
+  }, []);
+
+  // Listen for custom event from TrendingNews
+  useEffect(() => {
+    const handlePrefill = (e: CustomEvent) => {
+      const { value, type } = e.detail;
+      setInput(value);
+      setInputType(type);
+      setResult(null);
+    };
+
+    window.addEventListener('misintel-prefill', handlePrefill as EventListener);
+    return () => {
+      window.removeEventListener('misintel-prefill', handlePrefill as EventListener);
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -38,7 +70,7 @@ function FactCheckTool() {
     setLoading(true);
 
     try {
-      if ((inputType === 'text' || inputType === 'url') && !input.trim()) {
+      if (!input.trim()) {
         throw new Error(inputType === 'url' ? 'Please enter a URL' : 'Please enter some text');
       }
 
@@ -113,7 +145,8 @@ function FactCheckTool() {
           text: shareText,
         });
       } catch (error) {
-        alert('Sharing cancelled or failed.');
+        // User cancelled or share failed
+        console.log('Share cancelled');
       }
     } else {
       try {
@@ -174,7 +207,7 @@ function FactCheckTool() {
               placeholder={inputType === 'text' ? "Paste text to verify..." : "Enter URL to verify..."}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              required={inputType === 'text' || inputType === 'url'}
+              required
             />
 
             <button
@@ -200,7 +233,7 @@ function FactCheckTool() {
           <div className="mt-8">
             <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6">
               <div className="flex items-start space-x-4">
-                <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+                <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
                   result.isFake ? 'bg-red-500/20 text-red-400' : 
                   result.confidence === 0 ? 'bg-yellow-500/20 text-yellow-400' : 
                   'bg-green-500/20 text-green-400'
