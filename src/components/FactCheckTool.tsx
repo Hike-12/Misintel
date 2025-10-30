@@ -42,6 +42,7 @@ function FactCheckTool() {
       const prefillType = localStorage.getItem('misintel_prefill_type');
       
       if (prefill && prefillType) {
+        console.log('🌐 Web app: Loading from localStorage');
         setInput(prefill);
         setInputType(prefillType as 'text' | 'url');
         localStorage.removeItem('misintel_prefill');
@@ -52,44 +53,75 @@ function FactCheckTool() {
     }
   }, [isExtension]);
 
-  // NEW: Load from Chrome storage with retry logic
+  // EXTENSION: Aggressive polling with immediate check
   useEffect(() => {
     if (!isExtension) return;
 
-    console.log('🔍 Extension detected, checking storage...');
+    console.log('🔌 Extension mode detected!');
     
-    let attempts = 0;
-    const maxAttempts = 5;
-    const checkInterval = 100; // Check every 100ms
-    
-    const checkStorage = () => {
-      chrome.storage.local.get(['selectedText', 'timestamp', 'fromContextMenu'], (result) => {
-        console.log(`📦 Attempt ${attempts + 1}:`, result);
-        
-        if (result.selectedText && result.fromContextMenu) {
-          console.log('✅ Found text! Filling input...');
+    let foundText = false;
+    let pollCount = 0;
+    const MAX_POLLS = 30; // 3 seconds total
+    const POLL_INTERVAL = 100; // Check every 100ms
+
+    const checkForText = () => {
+      pollCount++;
+      console.log(`🔄 Poll attempt ${pollCount}/${MAX_POLLS}`);
+
+      chrome.storage.local.get(['selectedText', 'fromContextMenu'], (result) => {
+        if (chrome.runtime.lastError) {
+          console.error('❌ Storage read error:', chrome.runtime.lastError);
+          return;
+        }
+
+        console.log(`📦 Storage check ${pollCount}:`, result);
+
+        if (result.selectedText && result.fromContextMenu && !foundText) {
+          foundText = true;
+          console.log('✅✅✅ FOUND TEXT! Filling input now!');
+          
           setInput(result.selectedText);
           setInputType('text');
           setResult(null);
-          
+
           // Clear storage
-          chrome.runtime.sendMessage({ action: "clearSelectedText" }, (response) => {
-            console.log('🧹 Storage cleared');
+          chrome.storage.local.remove(['selectedText', 'fromContextMenu', 'timestamp'], () => {
+            console.log('🧹 Storage cleared after successful fill');
           });
-        } else {
-          attempts++;
-          if (attempts < maxAttempts) {
-            console.log('⏳ Retrying...');
-            setTimeout(checkStorage, checkInterval);
-          } else {
-            console.log('❌ Max attempts reached, no text found');
-          }
+        } else if (pollCount < MAX_POLLS && !foundText) {
+          // Keep polling
+          setTimeout(checkForText, POLL_INTERVAL);
+        } else if (pollCount >= MAX_POLLS && !foundText) {
+          console.log('⏱️ Polling timeout - no text found after 3 seconds');
         }
       });
     };
+
+    // Start immediately
+    checkForText();
+
+    // Cleanup
+    return () => {
+      foundText = true; // Stop polling if component unmounts
+    };
+  }, [isExtension]);
+
+  // Listen for custom event from TrendingNews (for web app)
+  useEffect(() => {
+    if (isExtension) return;
     
-    // Start checking after a small delay to let background script save data
-    setTimeout(checkStorage, 50);
+    const handlePrefill = (e: CustomEvent) => {
+      const { value, type } = e.detail;
+      console.log('📰 TrendingNews prefill event');
+      setInput(value);
+      setInputType(type);
+      setResult(null);
+    };
+
+    window.addEventListener('misintel-prefill', handlePrefill as EventListener);
+    return () => {
+      window.removeEventListener('misintel-prefill', handlePrefill as EventListener);
+    };
   }, [isExtension]);
 
   // Listen for custom event from TrendingNews (for web app)

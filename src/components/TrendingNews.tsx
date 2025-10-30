@@ -111,13 +111,6 @@ export default function TrendingNews() {
                   </a>
                   <div className="flex gap-2 justify-end">
                     <button
-                      onClick={() => prefillAndGo(it.link, true)}
-                      className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-lg text-xs border border-white/10 transition"
-                      title="Verify the URL"
-                    >
-                      Check URL
-                    </button>
-                    <button
                       onClick={() => prefillAndGo(it.title, false)}
                       className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-lg text-xs border border-white/10 transition"
                       title="Verify the headline text"
