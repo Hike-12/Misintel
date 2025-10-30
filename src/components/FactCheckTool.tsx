@@ -31,8 +31,12 @@ function FactCheckTool() {
     }
   }
 
-  // Load from localStorage on mount
+  const isExtension = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+
+  // Load from localStorage on mount (for web app)
   useEffect(() => {
+    if (isExtension) return;
+    
     try {
       const prefill = localStorage.getItem('misintel_prefill');
       const prefillType = localStorage.getItem('misintel_prefill_type');
@@ -46,10 +50,52 @@ function FactCheckTool() {
     } catch (e) {
       console.error('Failed to load prefill:', e);
     }
-  }, []);
+  }, [isExtension]);
 
-  // Listen for custom event from TrendingNews
+  // NEW: Load from Chrome storage with retry logic
   useEffect(() => {
+    if (!isExtension) return;
+
+    console.log('🔍 Extension detected, checking storage...');
+    
+    let attempts = 0;
+    const maxAttempts = 5;
+    const checkInterval = 100; // Check every 100ms
+    
+    const checkStorage = () => {
+      chrome.storage.local.get(['selectedText', 'timestamp', 'fromContextMenu'], (result) => {
+        console.log(`📦 Attempt ${attempts + 1}:`, result);
+        
+        if (result.selectedText && result.fromContextMenu) {
+          console.log('✅ Found text! Filling input...');
+          setInput(result.selectedText);
+          setInputType('text');
+          setResult(null);
+          
+          // Clear storage
+          chrome.runtime.sendMessage({ action: "clearSelectedText" }, (response) => {
+            console.log('🧹 Storage cleared');
+          });
+        } else {
+          attempts++;
+          if (attempts < maxAttempts) {
+            console.log('⏳ Retrying...');
+            setTimeout(checkStorage, checkInterval);
+          } else {
+            console.log('❌ Max attempts reached, no text found');
+          }
+        }
+      });
+    };
+    
+    // Start checking after a small delay to let background script save data
+    setTimeout(checkStorage, 50);
+  }, [isExtension]);
+
+  // Listen for custom event from TrendingNews (for web app)
+  useEffect(() => {
+    if (isExtension) return;
+    
     const handlePrefill = (e: CustomEvent) => {
       const { value, type } = e.detail;
       setInput(value);
@@ -61,7 +107,7 @@ function FactCheckTool() {
     return () => {
       window.removeEventListener('misintel-prefill', handlePrefill as EventListener);
     };
-  }, []);
+  }, [isExtension]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,10 +128,10 @@ function FactCheckTool() {
       formData.append('type', inputType);
       formData.append('input', input.trim());
 
-      const apiBase =
-        window.location.protocol === "chrome-extension:"
-          ? "http://localhost:3000"
-          : process.env.NEXT_PUBLIC_API_URL || "";
+      const apiBase = isExtension
+        ? "http://localhost:3000"
+        : process.env.NEXT_PUBLIC_API_URL || "";
+      
       const response = await fetch(`${apiBase}/api/advanced-check`, {
         method: 'POST',
         body: formData,
@@ -145,7 +191,6 @@ function FactCheckTool() {
           text: shareText,
         });
       } catch (error) {
-        // User cancelled or share failed
         console.log('Share cancelled');
       }
     } else {
@@ -160,7 +205,7 @@ function FactCheckTool() {
 
   return (
     <div id="fact-checker" className="relative min-h-screen flex items-center justify-center px-4 py-20 bg-black">
-      {/* Grid Background */}
+      {/* ...rest of the component stays the same... */}
       <div
         className={cn(
           "pointer-events-none absolute inset-0 [background-size:40px_40px] select-none opacity-10",
@@ -169,7 +214,6 @@ function FactCheckTool() {
       />
 
       <div className="relative z-10 text-center max-w-4xl mx-auto w-full">
-        {/* Header */}
         <div className="mb-12">
           <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-4">
             AI-Powered Fact Checker
@@ -179,10 +223,7 @@ function FactCheckTool() {
           </p>
         </div>
 
-        {/* Main Card */}
         <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6">
-          
-          {/* Input Type Selection */}
           <div className="flex gap-3 mb-6 justify-center">
             {(['text', 'url'] as const).map((type) => (
               <button
@@ -199,7 +240,6 @@ function FactCheckTool() {
             ))}
           </div>
 
-          {/* Input Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <textarea
               className="w-full p-4 border border-neutral-700 rounded-lg focus:ring-2 focus:ring-neutral-500/20 focus:border-neutral-500 transition-all duration-200 bg-neutral-900/30 text-neutral-100 placeholder-neutral-500 text-sm resize-none"
@@ -228,7 +268,7 @@ function FactCheckTool() {
           </form>
         </div>
 
-        {/* Results Section */}
+        {/* Results and History sections remain the same */}
         {result && (
           <div className="mt-8">
             <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6">
@@ -298,7 +338,6 @@ function FactCheckTool() {
           </div>
         )}
 
-        {/* History Section */}
         {history.length > 0 && (
           <div className="mt-8">
             <h3 className="text-sm font-medium text-neutral-400 mb-3 text-center">Recent checks</h3>
