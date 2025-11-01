@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { cn } from "@/utils/cn";
 
+// @ts-ignore
+const chrome = (typeof window !== "undefined" && (window as any).chrome) ? (window as any).chrome : undefined;
+
 type AnalysisResult = {
   isFake: boolean;
   confidence: number;
