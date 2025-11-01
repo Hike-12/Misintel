@@ -71,7 +71,7 @@ function FactCheckTool() {
       pollCount++;
       console.log(`🔄 Poll attempt ${pollCount}/${MAX_POLLS}`);
 
-      chrome.storage.local.get(['selectedText', 'fromContextMenu'], (result) => {
+      chrome.storage.local.get(['selectedText', 'fromContextMenu'], (result: { selectedText?: string; fromContextMenu?: boolean }) => {
         if (chrome.runtime.lastError) {
           console.error('❌ Storage read error:', chrome.runtime.lastError);
           return;
