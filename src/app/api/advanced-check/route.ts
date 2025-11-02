@@ -27,6 +27,45 @@ export async function OPTIONS() {
   });
 }
 
+// --- Rate limiter (in-memory, per-client IP) ---
+type RLMap = Map<string, number[]>;
+
+// Adjustable limits
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 6; // max requests per window
+
+// Use globalThis to persist across module reloads in dev
+const rlStoreKey = '__misintel_rate_limiter_v1__';
+if (!(globalThis as any)[rlStoreKey]) {
+  (globalThis as any)[rlStoreKey] = new Map() as RLMap;
+}
+const rateLimitMap = (globalThis as any)[rlStoreKey] as RLMap;
+
+function getClientIp(req: NextRequest) {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip') ||
+    req.headers.get('cf-connecting-ip') ||
+    req.headers.get('fastly-client-ip') ||
+    'unknown'
+  );
+}
+
+function checkRateLimit(ip: string) {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const hits = rateLimitMap.get(ip) || [];
+  const recent = hits.filter(ts => ts > windowStart);
+  if (recent.length >= RATE_LIMIT_MAX) {
+    const oldest = recent[0];
+    const retryAfterSec = Math.ceil((oldest + RATE_LIMIT_WINDOW_MS - now) / 1000);
+    return { limited: true, retryAfter: retryAfterSec };
+  }
+  recent.push(now);
+  rateLimitMap.set(ip, recent);
+  return { limited: false, retryAfter: 0 };
+}
+
 // Helper function to call Fact Check Tools API
 async function getFactCheckResults(query: string) {
   const apiKey = process.env.FACT_GEMINI_API_KEY;
@@ -132,6 +171,34 @@ async function extractUrlContent(url: string): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
+  // RATE LIMIT CHECK
+  const clientIp = getClientIp(req);
+  const rl = checkRateLimit(clientIp);
+if (rl.limited) {
+  console.warn(`⛔ Rate limit exceeded for IP ${clientIp}`);
+  return new Response(
+    JSON.stringify({
+      isFake: false,
+      confidence: 0,
+      summary: "Analysis failed",
+      reasons: [
+        "Request failed with status 429",
+        "Please check your input and try again"
+      ]
+    }),
+    {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "Retry-After": String(rl.retryAfter),
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    }
+  );
+}
+
   console.log('🚀 Advanced API Request received');
   const apiKey = process.env.FACT_GEMINI_API_KEY;
   if (!apiKey) {

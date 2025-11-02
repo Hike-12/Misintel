@@ -172,9 +172,23 @@ function FactCheckTool() {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        setResult({
+          isFake: false,
+          confidence: 0,
+          summary: "Too many requests. Please wait a minute before trying again.",
+          reasons: [
+            "You have hit the rate limit for analysis.",
+            "This helps prevent spam and keeps the service fast for everyone."
+          ]
+        });
+        setLoading(false);
+        return;
       }
+      throw new Error(`Request failed with status ${response.status}`);
+    }
 
       const data = await response.json();
       
