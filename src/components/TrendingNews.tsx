@@ -56,7 +56,7 @@ export default function TrendingNews() {
   };
 
   return (
-    <section id="trending-news" className="py-16 px-4 bg-black">
+    <section id="trending-news" className="py-16 px-4 bg-muted/50 dark:bg-background">
       <div className="max-w-5xl mx-auto">
         <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-6 text-center">
           Trending News

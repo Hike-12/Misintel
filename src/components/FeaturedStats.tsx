@@ -36,9 +36,9 @@ function FeaturedStats() {
   ];
 
   return (
-    <div className="py-20 px-4 relative bg-black">
+    <div className="py-20 px-4 relative bg-muted/50 dark:bg-background" id="why-misintel">
       <div className="text-center mb-16 relative z-10">
-        <h2 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-6">
+        <h2 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-6">
           Why Choose MisIntel?
         </h2>
         <p className="text-neutral-300 text-lg max-w-3xl mx-auto leading-relaxed">
@@ -46,7 +46,7 @@ function FeaturedStats() {
         </p>
       </div>
       
-      <div className="max-w-7xl mx-auto relative z-10">
+      <div className="max-w-5xl mx-auto relative z-10">
         {/* Features Grid - Using the exact layout from your screenshot */}
         <ul className="grid grid-cols-1 grid-rows-none gap-4 md:grid-cols-12 md:grid-rows-3 lg:gap-4 xl:max-h-[34rem] xl:grid-rows-2 mb-16">
           {/* Top Left */}

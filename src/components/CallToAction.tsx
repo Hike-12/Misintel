@@ -1,10 +1,9 @@
-// components/WhyTruthGuard.tsx
 "use client";
 
 import React from "react";
 import { GlowingEffect } from "@/components/ui/glowing-effect";
 
-function WhyTruthGuard() {
+function CallToAction() {
   const handleStartVerifyingClick = (e: React.MouseEvent) => {
     e.preventDefault();
     
@@ -21,7 +20,7 @@ function WhyTruthGuard() {
   };
 
   return (
-    <div className="py-20 relative bg-black">
+    <div className="py-20 relative bg-muted/50 dark:bg-background">
       {/* Call to Action */}
       <div className="max-w-4xl mx-auto px-4">
         <div className="relative rounded-3xl p-8 text-center border border-white/10">
@@ -69,4 +68,4 @@ function WhyTruthGuard() {
   );
 }
 
-export default WhyTruthGuard;
+export default CallToAction;

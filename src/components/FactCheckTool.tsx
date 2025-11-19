@@ -253,7 +253,7 @@ function FactCheckTool() {
   };
 
   return (
-    <div id="fact-checker" className="relative min-h-screen flex items-center justify-center px-4 py-20 bg-black">
+    <div id="fact-checker" className="relative min-h-screen flex items-center justify-center px-4 py-20 bg-muted/50 dark:bg-background">
       {/* ...rest of the component stays the same... */}
       <div
         className={cn(
@@ -262,7 +262,7 @@ function FactCheckTool() {
         )}
       />
 
-      <div className="relative z-10 text-center max-w-4xl mx-auto w-full">
+      <div className="relative z-10 text-center max-w-5xl mx-auto w-full">
         <div className="mb-12">
           <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-4">
             AI-Powered Fact Checker

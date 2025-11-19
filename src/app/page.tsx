@@ -3,16 +3,16 @@ import Navbar from '@/components/Navbar';
 import HeroSection from '@/components/HeroSection';
 import FactCheckTool from '@/components/FactCheckTool';
 import FeaturedStats from '@/components/FeaturedStats';
-import WhyTruthGuard from '@/components/WhyTruthGuard';
+import CallToAction from '@/components/CallToAction';
 import WhatsAppExtension from '@/components/WhatsAppExtension';
 import Footer from '@/components/Footer';
 import TrendingNews from '@/components/TrendingNews';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-black">
+    <main className="min-h-screen bg-background">
       <Navbar />
-      <div> {/* Remove the pt-20 padding */}
+      <div>
         <section id="home">
           <HeroSection />
         </section>
@@ -21,20 +21,20 @@ export default function Home() {
           <FactCheckTool />
         </section>
 
-        <section id="trending-news">
+        <section id="trending-news" className="py-12">
           <TrendingNews />
         </section>
-        
-        <section id="features">
-          <WhatsAppExtension />
-        </section>
 
-        <section id="features">
+        <section className="py-12">
           <FeaturedStats />
         </section>
         
-        <section id="how-it-works">
-          <WhyTruthGuard />
+        <section id="features" className="py-12">
+          <WhatsAppExtension />
+        </section>
+
+        <section className="py-12">
+          <CallToAction />
         </section>
         
         <section id="about">

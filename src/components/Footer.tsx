@@ -4,11 +4,11 @@ import { Mail, Globe, Shield, Zap, Search, Brain, FileText, BookOpen } from "luc
 
 function Footer() {
   return (
-    <footer className="relative py-16 px-4 mt-20 bg-black border-t border-white/10">
+    <footer className="relative py-16 px-4 bg-muted/50 dark:bg-background border-t border-white/10">
       {/* Background decoration */}
-      <div className="absolute inset-0 bg-black"></div>
+      <div className="absolute inset-0 bg-muted/50 dark:bg-background"></div>
       
-      <div className="max-w-7xl mx-auto relative z-10">
+      <div className="max-w-5xl mx-auto relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           {/* Brand Section */}
           <div className="col-span-1 md:col-span-2">
@@ -51,15 +51,9 @@ function Footer() {
                 </a>
               </li>
               <li>
-                <a href="#how-it-works" className="text-neutral-400 hover:text-neutral-100 transition-colors duration-200 text-sm flex items-center">
+                <a href="#trending-news" className="text-neutral-400 hover:text-neutral-100 transition-colors duration-200 text-sm flex items-center">
                   <BookOpen className="h-3 w-3 mr-2" />
-                  How It Works
-                </a>
-              </li>
-              <li>
-                <a href="#about" className="text-neutral-400 hover:text-neutral-100 transition-colors duration-200 text-sm flex items-center">
-                  <Shield className="h-3 w-3 mr-2" />
-                  About
+                  News
                 </a>
               </li>
             </ul>
