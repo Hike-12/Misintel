@@ -14,7 +14,21 @@ export function buildGeminiPrompt(
   safetyCheck: SafetyCheckResult,
   urlToCheck: string
 ): string {
+  const now = new Date();
+  const todayFormatted = now.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  const timestamp = now.toISOString();
+  
   return `You are an expert fact-checker analyzing content for misinformation. 
+
+⏰ CRITICAL: TODAY'S DATE AND TIME
+Current Date: ${todayFormatted}
+ISO Timestamp: ${timestamp}
+**IMPORTANT: Any article dated AFTER this timestamp is from the FUTURE and is speculative/prediction, NOT a confirmed fact. Any article dated BEFORE this timestamp is from the PAST and may be confirmed news.**
 
 CONTENT TO ANALYZE:
 "${contentToAnalyze.substring(0, 1500)}"
@@ -32,13 +46,15 @@ URL SAFETY CHECK:
 ${urlToCheck ? `URL: ${urlToCheck} - Safety Status: ${safetyCheck.safe ? 'Safe' : 'Potentially Unsafe'}` : "No URL provided"}
 
 ANALYSIS INSTRUCTIONS:
-1. Prioritize recent news articles from reputable sources (within last 48 hours)
-2. Cross-reference with fact-check database results
-3. Evaluate source credibility from search results
-4. Consider URL safety if applicable
-5. Look for common misinformation patterns
-6. If recent news from 2+ trusted sources confirms a claim, increase confidence
-7. Provide reasoning based on evidence from all sources
+1. **ALWAYS compare article dates with today's date (${todayFormatted}) to determine if they are past events or future predictions**
+2. Prioritize recent news articles from reputable sources (within last 48 hours)
+3. Cross-reference with fact-check database results
+4. Evaluate source credibility from search results
+5. Consider URL safety if applicable
+6. Look for common misinformation patterns
+7. If recent news from 2+ trusted sources confirms a claim, increase confidence
+8. **If articles are dated in the future (after ${todayFormatted}), they are SPECULATIVE, not factual**
+9. Provide reasoning based on evidence from all sources
 
 Return ONLY a valid JSON response with no additional text:
 
