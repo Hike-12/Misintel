@@ -153,7 +153,7 @@ function FactCheckTool() {
 
   const buildVerificationFlow = useCallback((data: any, inputContent: string): VerificationStep[] => {
     const steps: VerificationStep[] = [];
-    
+
     // Step 1: Input received
     steps.push({
       id: '1',
@@ -186,25 +186,72 @@ function FactCheckTool() {
       });
     }
 
-    // Step 3: Fact Check Database
+    // ==== improved Step 3: Fact Check Database ====
+    const parseClaimRating = (claim: any) => {
+      // try claimReview first (Google Fact Check Tools)
+      const review = (claim.claimReview && claim.claimReview[0]) || (claim.reviewers && claim.reviewers[0]) || null;
+      let ratingText = '';
+
+      if (review) {
+        ratingText =
+          (review.textualRating || '') ||
+          (review.reviewRating && review.reviewRating.alternateName) ||
+          (review.title || '') ||
+          (review.description || '') ||
+          '';
+      }
+
+      // fallback: some providers put publisher/rating elsewhere
+      ratingText = ratingText || (claim.textualRating || claim.rating || '');
+
+      return ratingText.toString().trim().toLowerCase();
+    };
+
+    const extractClaimUrls = (claim: any) => {
+      const review = (claim.claimReview && claim.claimReview[0]) || (claim.reviewers && claim.reviewers[0]) || null;
+      const urls: string[] = [];
+      if (review) {
+        if (review.url) urls.push(review.url);
+        if (review.publisher && review.publisher.url) urls.push(review.publisher.url);
+        if (review.publisher && review.publisher.site) urls.push(review.publisher.site);
+      }
+      // some responses include claimReview[].claimReviewUrl or claim.url
+      if (claim.url) urls.push(claim.url);
+      return urls.filter(Boolean);
+    };
+
+    const NEGATIVE_RE = /\b(false|misleading|pants on fire|fabricated|hoax|incorrect|not true|debunked|falsehood|misrepresen|untrue)\b/i;
+    const POSITIVE_RE = /\b(true|accurate|correct|verified|substantiated|true claim|confirmed|supported)\b/i;
+
     if (data.factCheckResults && data.factCheckResults.length > 0) {
-      const hasNegative = data.factCheckResults.some((claim: any) =>
-        claim.reviewers?.some((r: any) => 
-          r.rating?.toLowerCase().includes('false') || 
-          r.rating?.toLowerCase().includes('misleading')
-        )
-      );
+      let hasNegative = false;
+      let hasPositive = false;
+
+      data.factCheckResults.forEach((claim: any) => {
+        const rt = parseClaimRating(claim);
+        if (!rt) {
+          // useful debug when classification is unclear
+          console.debug('FactCheck claim (no rating found):', claim);
+        } else {
+          if (NEGATIVE_RE.test(rt)) hasNegative = true;
+          if (POSITIVE_RE.test(rt)) hasPositive = true;
+        }
+      });
+
+      let status: VerificationStep['status'] = 'warning';
+      if (hasNegative && !hasPositive) status = 'error';
+      else if (hasPositive && !hasNegative) status = 'success';
+      else status = 'warning';
+
       steps.push({
         id: '3',
         label: 'Fact Check Database',
-        status: hasNegative ? 'error' : 'success',
-        details: `Found ${data.factCheckResults.length} related fact-checks`,
-        sources: data.factCheckResults.slice(0, 3).flatMap((claim: any) =>
-          claim.reviewers?.slice(0, 2).map((r: any) => ({
-            url: r.url,
-            title: `${r.publisher} - ${r.rating}`
-          })) || []
-        ),
+        status,
+        details: `Found ${data.factCheckResults.length} related fact-check(s)`,
+        sources: data.factCheckResults
+          .flatMap((c: any) => extractClaimUrls(c))
+          .slice(0, 3)
+          .map((u: string) => ({ url: u, title: u })),
         timestamp: Date.now() + 200,
       });
     } else {

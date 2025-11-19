@@ -6,7 +6,7 @@ import { SafetyCheckResult } from './types';
  * Call Google Fact Check Tools API
  */
 export async function getFactCheckResults(query: string) {
-  const apiKey = process.env.FACT_GEMINI_API_KEY;
+  const apiKey = process.env.FACT_CHECK_API_KEY;
   try {
     const response = await fetch(
       `https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${encodeURIComponent(query)}&key=${apiKey}`
@@ -16,6 +16,9 @@ export async function getFactCheckResults(query: string) {
       return [];
     }
     const data = await response.json();
+    console.log("-------------------------------------------")
+    console.log(data)
+    console.log("-------------------------------------------")
     return data.claims || [];
   } catch (error) {
     console.error('❌ Fact Check API error:', error);
