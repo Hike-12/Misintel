@@ -22,7 +22,7 @@ function CallToAction() {
   return (
     <div className="py-20 relative bg-muted/50 dark:bg-background">
       {/* Call to Action */}
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-5xl mx-auto px-4">
         <div className="relative rounded-3xl p-8 text-center border border-white/10">
           {/* Card Glowing Effect */}
           <div className="absolute inset-0 rounded-3xl">

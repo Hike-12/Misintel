@@ -38,7 +38,7 @@ function FeaturedStats() {
   return (
     <div className="py-20 px-4 relative bg-muted/50 dark:bg-background" id="why-misintel">
       <div className="text-center mb-16 relative z-10">
-        <h2 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-6">
+        <h2 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-6 pb-2">
           Why Choose MisIntel?
         </h2>
         <p className="text-neutral-300 text-lg max-w-3xl mx-auto leading-relaxed">

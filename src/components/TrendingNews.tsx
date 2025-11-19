@@ -58,7 +58,7 @@ export default function TrendingNews() {
   return (
     <section id="trending-news" className="py-16 px-4 bg-muted/50 dark:bg-background">
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-6 text-center">
+        <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-6 pb-2 text-center">
           Trending News
         </h2>
         <p className="text-neutral-400 text-sm md:text-base max-w-2xl mx-auto mb-8 text-center">

@@ -4,7 +4,7 @@ export default function WhatsAppExtension() {
   return (
     <section className="py-20 px-4 bg-muted/50 dark:bg-background">
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-8 text-center">
+        <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-8 pb-2 text-center">
           Try MisIntel on WhatsApp & Web Extension
         </h2>
         <p className="text-neutral-400 text-lg max-w-2xl mx-auto mb-12 text-center">
