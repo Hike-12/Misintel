@@ -17,6 +17,7 @@
     "@splinetool/runtime": "^1.10.51",
     "@tabler/icons-react": "^3.34.1",
     "@types/three": "^0.179.0",
+    "@upstash/redis": "^1.35.6",
     "autoprefixer": "^10.4.21",
     "axios": "^1.12.2",
     "cheerio": "^1.1.2",

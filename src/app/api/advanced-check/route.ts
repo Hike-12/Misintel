@@ -21,6 +21,7 @@ import {
   buildPartialFailureResponse,
   buildServerErrorResponse
 } from './response-builders';
+import { getCachedAnalysis, cacheAnalysis, CACHE_CONFIG } from '@/lib/redis';
 
 // --- CORS handler ---
 export async function OPTIONS() {
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const type = formData.get('type') as string;
     const input = formData.get('input') as string;
+    const forceFresh = formData.get('forceFresh') === 'true'; // Optional: bypass cache
     console.log('📝 Request type:', type, 'Input length:', input?.length || 0);
 
     let contentToAnalyze = '';
@@ -74,6 +76,44 @@ export async function POST(req: NextRequest) {
         return buildMissingInputResponse('No URL provided');
       }
       urlToCheck = input.trim();
+      
+      // ====== CHECK CACHE FOR URL QUERIES ======
+      if (!forceFresh) {
+        console.log('🔍 Checking cache for URL:', urlToCheck);
+        const cachedResult = await getCachedAnalysis(urlToCheck);
+        
+        if (cachedResult) {
+          console.log('✅ Cache HIT - Returning cached result');
+          
+          // Parse cached result if it's a string
+          const parsedCache = typeof cachedResult === 'string' 
+            ? JSON.parse(cachedResult) 
+            : cachedResult;
+          
+          return buildSuccessResponse({
+            isFake: parsedCache.isFake,
+            confidence: parsedCache.confidence,
+            summary: parsedCache.summary,
+            reasons: parsedCache.reasons || [],
+            sources: parsedCache.sources || [],
+            factCheckResults: parsedCache.factCheckResults || [],
+            safetyCheck: parsedCache.safetyCheck || { safe: true, threats: [] },
+            customSearchResults: parsedCache.customSearchResults || [],
+            newsResults: parsedCache.newsResults || [],
+            inputText: parsedCache.inputText,
+            inputUrl: parsedCache.inputUrl || urlToCheck,
+            timestamp: parsedCache.timestamp || new Date().toISOString(),
+            fromCache: true,
+            cachedAt: parsedCache.timestamp || new Date().toISOString(),
+          });
+        }
+        
+        console.log('Cache MISS - Proceeding with analysis');
+      } else {
+        console.log('⚡ Force fresh analysis - Bypassing cache');
+      }
+      // =========================================
+      
       console.log('🔗 Extracting content from URL...');
       contentToAnalyze = await extractUrlContent(urlToCheck);
       if (!contentToAnalyze) {
@@ -166,7 +206,36 @@ export async function POST(req: NextRequest) {
         type
       );
       
-      return buildSuccessResponse(analysis);
+      // ====== CACHE SUCCESSFUL RESULT FOR URL QUERIES ======
+      if (type === 'url' && urlToCheck) {
+        const resultToCache = {
+          ...analysis,
+          timestamp: new Date().toISOString(),
+        };
+        
+        // Dynamic TTL based on confidence
+        let customTTL = CACHE_CONFIG.URL_CACHE_TTL;
+        
+        if (analysis.confidence < 70) {
+          customTTL = 60 * 60 * 12; // 12 hours for low confidence
+        } else if (analysis.confidence >= 90) {
+          customTTL = 60 * 60 * 24 * 14; // 14 days for high confidence
+        }
+        
+        // Shorter TTL if safety issues detected
+        if (!analysis.safetyCheck?.safe) {
+          customTTL = 60 * 60 * 6; // 6 hours
+        }
+        
+        console.log(`💾 Caching result for URL (TTL: ${customTTL}s)`);
+        await cacheAnalysis(urlToCheck, resultToCache, customTTL);
+      }
+      // ====================================================
+      
+      return buildSuccessResponse({
+        ...analysis,
+        fromCache: false,
+      });
       
     } catch (geminiError: any) {
       console.error('❌ Gemini API Error:', geminiError);
@@ -181,7 +250,25 @@ export async function POST(req: NextRequest) {
           searchSummary,
           type
         );
-        return buildSuccessResponse(fallbackAnalysis);
+        
+        // ====== CACHE FALLBACK RESULT FOR URL QUERIES ======
+        if (type === 'url' && urlToCheck) {
+          const resultToCache = {
+            ...fallbackAnalysis,
+            timestamp: new Date().toISOString(),
+          };
+          
+          // Shorter TTL for fallback results
+          const fallbackTTL = 60 * 60 * 6; // 6 hours
+          console.log(`💾 Caching fallback result for URL (TTL: ${fallbackTTL}s)`);
+          await cacheAnalysis(urlToCheck, resultToCache, fallbackTTL);
+        }
+        // ==================================================
+        
+        return buildSuccessResponse({
+          ...fallbackAnalysis,
+          fromCache: false,
+        });
       } catch {
         return buildPartialFailureResponse(
           factCheckResults,
