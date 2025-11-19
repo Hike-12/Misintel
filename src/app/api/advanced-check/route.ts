@@ -11,6 +11,7 @@ type AnalysisResult = {
   factCheckResults?: any[];
   safetyCheck?: any;
   customSearchResults?: any[];
+  newsResults?: string;
   inputText?: string;
   inputUrl?: string;
 };
@@ -170,6 +171,33 @@ async function extractUrlContent(url: string): Promise<string> {
   }
 }
 
+// Helper function to fetch recent news from NewsAPI
+async function getRecentNews(query: string) {
+  const apiKey = process.env.NEWS_API_KEY;
+  if (!apiKey) {
+    console.log('⚠️ NewsAPI key not configured');
+    return [];
+  }
+  
+  try {
+    const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Last 7 days
+    const response = await fetch(
+      `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${fromDate}&sortBy=publishedAt&language=en&pageSize=10&apiKey=${apiKey}`
+    );
+    
+    if (!response.ok) {
+      console.log('❌ NewsAPI failed:', response.status);
+      return [];
+    }
+    
+    const data = await response.json();
+    return data.articles || [];
+  } catch (error) {
+    console.error('❌ NewsAPI error:', error);
+    return [];
+  }
+}
+
 export async function POST(req: NextRequest) {
   // RATE LIMIT CHECK
   const clientIp = getClientIp(req);
@@ -322,6 +350,11 @@ if (rl.limited) {
       console.log('✅ Safety check:', safetyCheck.safe ? 'Safe' : 'Threats found');
     }
 
+    // Step 3.5: Get Recent News (NEW)
+    console.log('📰 Calling NewsAPI for recent articles...');
+    const newsResults = await getRecentNews(contentToAnalyze.substring(0, 200));
+    console.log('✅ News results:', newsResults.length, 'articles found');
+
     // Step 4: Prepare comprehensive prompt for Gemini (API 4)
     const factCheckSummary = factCheckResults.length > 0
       ? factCheckResults.map((claim: { text: any; claimant: any; claimReview: any[]; }) => ({
@@ -342,10 +375,21 @@ if (rl.limited) {
       source: item.displayLink
     }));
 
+    const newsSummary = newsResults.slice(0, 5).map((article: any) => ({
+      title: article.title,
+      source: article.source?.name,
+      publishedAt: article.publishedAt,
+      url: article.url,
+      description: article.description
+    }));
+
     const comprehensivePrompt = `You are an expert fact-checker analyzing content for misinformation. 
 
 CONTENT TO ANALYZE:
 "${contentToAnalyze.substring(0, 1500)}"
+
+RECENT NEWS ARTICLES (Last 7 days):
+${newsSummary.length > 0 ? JSON.stringify(newsSummary, null, 2) : "No recent news articles found"}
 
 FACT-CHECK DATABASE RESULTS:
 ${factCheckSummary.length > 0 ? JSON.stringify(factCheckSummary, null, 2) : "No direct fact-check matches found"}
@@ -357,12 +401,13 @@ URL SAFETY CHECK:
 ${urlToCheck ? `URL: ${urlToCheck} - Safety Status: ${safetyCheck.safe ? 'Safe' : 'Potentially Unsafe'}` : "No URL provided"}
 
 ANALYSIS INSTRUCTIONS:
-1. Analyze the content for misinformation indicators
+1. Prioritize recent news articles from reputable sources (within last 48 hours)
 2. Cross-reference with fact-check database results
 3. Evaluate source credibility from search results
 4. Consider URL safety if applicable
-5. Look for common misinformation patterns: sensational headlines, lack of sources, emotional manipulation, conspiracy theories
-6. Provide reasoning based on the evidence gathered from all sources
+5. Look for common misinformation patterns
+6. If recent news from 2+ trusted sources confirms a claim, increase confidence
+7. Provide reasoning based on evidence from all sources
 
 Return ONLY a valid JSON response with no additional text:
 
@@ -371,7 +416,7 @@ Return ONLY a valid JSON response with no additional text:
   "confidence": number (60-95, based on evidence strength),
   "summary": "Comprehensive analysis summary in 2-3 sentences",
   "reasons": ["Specific reason 1", "Specific reason 2", "Specific reason 3"],
-  "sources": ["Source URL 1", "Source URL 2"] (from fact-check or search results)
+  "sources": ["Source URL 1", "Source URL 2"] (from fact-check, news, or search results)
 }`;
 
     // Step 5: Call Gemini API with comprehensive analysis
@@ -380,7 +425,7 @@ Return ONLY a valid JSON response with no additional text:
       const genAI = new GoogleGenerativeAI(apiKey);
       let model;
       try {
-        model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       } catch {
         model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       }
@@ -413,16 +458,18 @@ Return ONLY a valid JSON response with no additional text:
           sources: Array.isArray(parsed.sources) && parsed.sources.length > 0
             ? parsed.sources
             : [...new Set([
+              ...newsResults.slice(0, 2).map((article: any) => article.url).filter(Boolean),
               ...factCheckResults.slice(0, 2).map((claim: any) =>
                 claim.claimReview?.[0]?.url
               ).filter(Boolean),
-              ...searchResults.slice(0, 2).map((item: string) => item.link).filter(Boolean),
+              ...searchResults.slice(0, 2).map((item: any) => item.link).filter(Boolean),
               "https://www.factcheck.org",
               "https://www.snopes.com"
-            ])].slice(0, 4),
+            ])].slice(0, 6),
           factCheckResults: factCheckSummary.slice(0, 3),
           safetyCheck: safetyCheck,
           customSearchResults: searchSummary.slice(0, 3),
+          newsResults: newsSummary.slice(0, 3), // Add this line
           inputText: type === 'text' ? contentToAnalyze : undefined,
           inputUrl: type === 'url' ? urlToCheck : undefined
         };

@@ -1,7 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { cn } from "@/utils/cn";
+import ReactFlow, {
+  Node,
+  Edge,
+  Background,
+  Controls,
+  MiniMap,
+  useNodesState,
+  useEdgesState,
+  MarkerType,
+  Panel,
+} from 'reactflow';
+// @ts-ignore: Allow importing CSS side-effects without type declarations
+import 'reactflow/dist/style.css';
+import { Download, Share2, ExternalLink } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 // @ts-ignore
 const chrome = (typeof window !== "undefined" && (window as any).chrome) ? (window as any).chrome : undefined;
@@ -16,6 +31,16 @@ type AnalysisResult = {
   safetyCheck?: any;
   inputText?: string;
   inputUrl?: string;
+  verificationFlow?: VerificationStep[];
+};
+
+type VerificationStep = {
+  id: string;
+  label: string;
+  status: 'pending' | 'processing' | 'success' | 'warning' | 'error';
+  details: string;
+  sources?: Array<{ url: string; title: string }>;
+  timestamp?: number;
 };
 
 function FactCheckTool() {
@@ -24,6 +49,9 @@ function FactCheckTool() {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<AnalysisResult[]>([]);
   const [inputType, setInputType] = useState<'text' | 'url'>('text');
+  const [showDiagram, setShowDiagram] = useState(false);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   function isValidUrl(url: string) {
     try {
@@ -56,7 +84,7 @@ function FactCheckTool() {
     }
   }, [isExtension]);
 
-  // EXTENSION: Aggressive polling with immediate check
+  // Extension polling logic
   useEffect(() => {
     if (!isExtension) return;
 
@@ -64,8 +92,8 @@ function FactCheckTool() {
     
     let foundText = false;
     let pollCount = 0;
-    const MAX_POLLS = 30; // 3 seconds total
-    const POLL_INTERVAL = 100; // Check every 100ms
+    const MAX_POLLS = 30;
+    const POLL_INTERVAL = 100;
 
     const checkForText = () => {
       pollCount++;
@@ -87,12 +115,10 @@ function FactCheckTool() {
           setInputType('text');
           setResult(null);
 
-          // Clear storage
           chrome.storage.local.remove(['selectedText', 'fromContextMenu', 'timestamp'], () => {
             console.log('🧹 Storage cleared after successful fill');
           });
         } else if (pollCount < MAX_POLLS && !foundText) {
-          // Keep polling
           setTimeout(checkForText, POLL_INTERVAL);
         } else if (pollCount >= MAX_POLLS && !foundText) {
           console.log('⏱️ Polling timeout - no text found after 3 seconds');
@@ -100,16 +126,14 @@ function FactCheckTool() {
       });
     };
 
-    // Start immediately
     checkForText();
 
-    // Cleanup
     return () => {
-      foundText = true; // Stop polling if component unmounts
+      foundText = true;
     };
   }, [isExtension]);
 
-  // Listen for custom event from TrendingNews (for web app)
+  // Listen for custom event from TrendingNews
   useEffect(() => {
     if (isExtension) return;
     
@@ -127,28 +151,225 @@ function FactCheckTool() {
     };
   }, [isExtension]);
 
-  // Listen for custom event from TrendingNews (for web app)
-  useEffect(() => {
-    if (isExtension) return;
+  const buildVerificationFlow = useCallback((data: any, inputContent: string): VerificationStep[] => {
+    const steps: VerificationStep[] = [];
     
-    const handlePrefill = (e: CustomEvent) => {
-      const { value, type } = e.detail;
-      setInput(value);
-      setInputType(type);
-      setResult(null);
-    };
+    // Step 1: Input received
+    steps.push({
+      id: '1',
+      label: 'Input Received',
+      status: 'success',
+      details: inputContent.substring(0, 100) + (inputContent.length > 100 ? '...' : ''),
+      timestamp: Date.now(),
+    });
 
-    window.addEventListener('misintel-prefill', handlePrefill as EventListener);
-    return () => {
-      window.removeEventListener('misintel-prefill', handlePrefill as EventListener);
-    };
-  }, [isExtension]);
+    // Step 2: News API Check
+    if (data.newsResults && data.newsResults.length > 0) {
+      steps.push({
+        id: '2',
+        label: 'Recent News Check',
+        status: 'success',
+        details: `Found ${data.newsResults.length} recent articles from trusted sources`,
+        sources: data.newsResults.slice(0, 3).map((article: any) => ({
+          url: article.url,
+          title: article.title || article.source?.name || 'News Article'
+        })),
+        timestamp: Date.now() + 100,
+      });
+    } else {
+      steps.push({
+        id: '2',
+        label: 'Recent News Check',
+        status: 'warning',
+        details: 'No recent news articles found',
+        timestamp: Date.now() + 100,
+      });
+    }
+
+    // Step 3: Fact Check Database
+    if (data.factCheckResults && data.factCheckResults.length > 0) {
+      const hasNegative = data.factCheckResults.some((claim: any) =>
+        claim.reviewers?.some((r: any) => 
+          r.rating?.toLowerCase().includes('false') || 
+          r.rating?.toLowerCase().includes('misleading')
+        )
+      );
+      steps.push({
+        id: '3',
+        label: 'Fact Check Database',
+        status: hasNegative ? 'error' : 'success',
+        details: `Found ${data.factCheckResults.length} related fact-checks`,
+        sources: data.factCheckResults.slice(0, 3).flatMap((claim: any) =>
+          claim.reviewers?.slice(0, 2).map((r: any) => ({
+            url: r.url,
+            title: `${r.publisher} - ${r.rating}`
+          })) || []
+        ),
+        timestamp: Date.now() + 200,
+      });
+    } else {
+      steps.push({
+        id: '3',
+        label: 'Fact Check Database',
+        status: 'warning',
+        details: 'No existing fact-checks found',
+        timestamp: Date.now() + 200,
+      });
+    }
+
+    // Step 4: Custom Search Verification
+    if (data.customSearchResults && data.customSearchResults.length > 0) {
+      steps.push({
+        id: '4',
+        label: 'Search Verification',
+        status: 'success',
+        details: `Analyzed ${data.customSearchResults.length} search results`,
+        sources: data.customSearchResults.slice(0, 3).map((item: any) => ({
+          url: item.link,
+          title: item.title || item.source || 'Search Result'
+        })),
+        timestamp: Date.now() + 300,
+      });
+    } else {
+      steps.push({
+        id: '4',
+        label: 'Search Verification',
+        status: 'warning',
+        details: 'Limited search results available',
+        timestamp: Date.now() + 300,
+      });
+    }
+
+    // Step 5: URL Safety Check (if URL provided)
+    if (data.safetyCheck) {
+      steps.push({
+        id: '5',
+        label: 'URL Safety Check',
+        status: data.safetyCheck.safe ? 'success' : 'error',
+        details: data.safetyCheck.safe 
+          ? 'No security threats detected'
+          : `${data.safetyCheck.threats?.length || 0} security threats found`,
+        timestamp: Date.now() + 400,
+      });
+    }
+
+    // Step 6: AI Analysis
+    steps.push({
+      id: '6',
+      label: 'AI Analysis',
+      status: data.confidence >= 80 ? 'success' : data.confidence >= 60 ? 'warning' : 'error',
+      details: `Confidence: ${data.confidence}% - ${data.isFake ? 'Likely False' : 'Likely True'}`,
+      timestamp: Date.now() + 500,
+    });
+
+    // Step 7: Final Verdict
+    steps.push({
+      id: '7',
+      label: 'Final Verdict',
+      status: data.isFake ? 'error' : 'success',
+      details: data.summary,
+      sources: data.sources?.map((url: string) => ({
+        url,
+        title: new URL(url).hostname
+      })) || [],
+      timestamp: Date.now() + 600,
+    });
+
+    return steps;
+  }, []);
+
+  const generateFlowNodes = useCallback((steps: VerificationStep[]): { nodes: Node[], edges: Edge[] } => {
+    const nodeWidth = 280;
+    const nodeHeight = 120;
+    const horizontalSpacing = 350;
+    const verticalSpacing = 200;
+    
+    const nodes: Node[] = steps.map((step, index) => {
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      
+      return {
+        id: step.id,
+        type: 'default',
+        position: { 
+          x: col * horizontalSpacing, 
+          y: row * verticalSpacing 
+        },
+        data: { 
+          label: (
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-sm">{step.label}</span>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  step.status === 'success' ? 'bg-green-500/20 text-green-400' :
+                  step.status === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
+                  step.status === 'error' ? 'bg-red-500/20 text-red-400' :
+                  'bg-blue-500/20 text-blue-400'
+                }`}>
+                  {step.status === 'success' ? '✓' :
+                   step.status === 'warning' ? '⚠' :
+                   step.status === 'error' ? '✕' : '⋯'}
+                </span>
+              </div>
+              <p className="text-xs text-neutral-400 mb-2">{step.details}</p>
+              {step.sources && step.sources.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {step.sources.slice(0, 2).map((source, i) => (
+                    <a
+                      key={i}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span className="truncate max-w-[100px]">{source.title}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        },
+        style: {
+          background: 'rgba(0, 0, 0, 0.6)',
+          border: `1px solid ${
+            step.status === 'success' ? 'rgba(34, 197, 94, 0.3)' :
+            step.status === 'warning' ? 'rgba(234, 179, 8, 0.3)' :
+            step.status === 'error' ? 'rgba(239, 68, 68, 0.3)' :
+            'rgba(59, 130, 246, 0.3)'
+          }`,
+          borderRadius: '12px',
+          color: '#fff',
+          width: nodeWidth,
+          minHeight: nodeHeight,
+        },
+      };
+    });
+
+    const edges: Edge[] = steps.slice(0, -1).map((step, index) => ({
+      id: `e${step.id}-${steps[index + 1].id}`,
+      source: step.id,
+      target: steps[index + 1].id,
+      type: 'smoothstep',
+      animated: true,
+      style: { stroke: '#666', strokeWidth: 2 },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: '#666',
+      },
+    }));
+
+    return { nodes, edges };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     setResult(null);
     setLoading(true);
+    setShowDiagram(false);
 
     try {
       if (!input.trim()) {
@@ -172,25 +393,30 @@ function FactCheckTool() {
         body: formData,
       });
 
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        setResult({
-          isFake: false,
-          confidence: 0,
-          summary: "Too many requests. Please wait a minute before trying again.",
-          reasons: [
-            "You have hit the rate limit for analysis.",
-            "This helps prevent spam and keeps the service fast for everyone."
-          ]
-        });
-        setLoading(false);
-        return;
+      if (!response.ok) {
+        if (response.status === 429) {
+          setResult({
+            isFake: false,
+            confidence: 0,
+            summary: "Too many requests. Please wait a minute before trying again.",
+            reasons: [
+              "You have hit the rate limit for analysis.",
+              "This helps prevent spam and keeps the service fast for everyone."
+            ]
+          });
+          setLoading(false);
+          return;
+        }
+        throw new Error(`Request failed with status ${response.status}`);
       }
-      throw new Error(`Request failed with status ${response.status}`);
-    }
 
       const data = await response.json();
+      
+      const verificationFlow = buildVerificationFlow(data, input.trim());
+      const { nodes: flowNodes, edges: flowEdges } = generateFlowNodes(verificationFlow);
+      
+      setNodes(flowNodes);
+      setEdges(flowEdges);
       
       const newResult: AnalysisResult = {
         isFake: Boolean(data.isFake),
@@ -201,7 +427,8 @@ function FactCheckTool() {
         factCheckResults: data.factCheckResults || [],
         safetyCheck: data.safetyCheck || null,
         inputText: inputType === 'text' ? input.trim() : data.inputText,
-        inputUrl: inputType === 'url' ? input.trim() : data.inputUrl
+        inputUrl: inputType === 'url' ? input.trim() : data.inputUrl,
+        verificationFlow,
       };
       
       setResult(newResult);
@@ -226,6 +453,7 @@ function FactCheckTool() {
     setInputType(newType);
     setInput('');
     setResult(null);
+    setShowDiagram(false);
   };
 
   const shareResults = async () => {
@@ -252,9 +480,28 @@ function FactCheckTool() {
     }
   };
 
+  const downloadDiagram = async () => {
+    const element = document.getElementById('verification-flow-diagram');
+    if (!element) return;
+
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#000',
+        scale: 2,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `misintel-verification-${Date.now()}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    } catch (error) {
+      console.error('Failed to download diagram:', error);
+      alert('Failed to download diagram');
+    }
+  };
+
   return (
     <div id="fact-checker" className="relative min-h-screen flex items-center justify-center px-4 py-20 bg-muted/50 dark:bg-background">
-      {/* ...rest of the component stays the same... */}
       <div
         className={cn(
           "pointer-events-none absolute inset-0 [background-size:40px_40px] select-none opacity-10",
@@ -262,7 +509,7 @@ function FactCheckTool() {
         )}
       />
 
-      <div className="relative z-10 text-center max-w-5xl mx-auto w-full">
+      <div className="relative z-10 text-center max-w-7xl mx-auto w-full">
         <div className="mb-12">
           <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-4">
             AI-Powered Fact Checker
@@ -272,7 +519,7 @@ function FactCheckTool() {
           </p>
         </div>
 
-        <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6">
+        <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6 max-w-5xl mx-auto">
           <div className="flex gap-3 mb-6 justify-center">
             {(['text', 'url'] as const).map((type) => (
               <button
@@ -317,9 +564,8 @@ function FactCheckTool() {
           </form>
         </div>
 
-        {/* Results and History sections remain the same */}
         {result && (
-          <div className="mt-8">
+          <div className="mt-8 max-w-5xl mx-auto">
             <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6">
               <div className="flex items-start space-x-4">
                 <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
@@ -372,23 +618,94 @@ function FactCheckTool() {
                       </ul>
                     </div>
                   )}
-                  
-                  {result.confidence > 0 && (
-                    <button
-                      onClick={shareResults}
-                      className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-200 rounded-lg transition-all duration-200 text-xs font-medium"
-                    >
-                      Share Results
-                    </button>
+
+                  {result.sources && result.sources.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium text-neutral-100 mb-2">Sources:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {result.sources.map((source, i) => (
+                          <a
+                            key={i}
+                            href={source}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 px-2 py-1 bg-blue-500/10 rounded-md border border-blue-500/20"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            {new URL(source).hostname}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   )}
+                  
+                  <div className="flex gap-2">
+                    {result.confidence > 0 && (
+                      <button
+                        onClick={shareResults}
+                        className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-200 rounded-lg transition-all duration-200 text-xs font-medium flex items-center gap-2"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        Share Results
+                      </button>
+                    )}
+                    
+                    {result.verificationFlow && (
+                      <button
+                        onClick={() => setShowDiagram(!showDiagram)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 text-xs font-medium"
+                      >
+                        {showDiagram ? 'Hide' : 'Show'} Verification Flow
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
+
+            {showDiagram && result.verificationFlow && (
+              <div className="mt-6 bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-neutral-100">Verification Process</h3>
+                  <button
+                    onClick={downloadDiagram}
+                    className="px-3 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-200 rounded-lg transition-all duration-200 text-xs font-medium flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download Diagram
+                  </button>
+                </div>
+                
+                <div id="verification-flow-diagram" className="w-full h-[600px] bg-black/60 rounded-lg">
+                  <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    fitView
+                    minZoom={0.5}
+                    maxZoom={1.5}
+                  >
+                    <Background color="#333" gap={16} />
+                    <Controls className="bg-neutral-800 border border-neutral-700" />
+                    <MiniMap 
+                      className="bg-neutral-900 border border-neutral-700"
+                      nodeColor={(node) => {
+                        const status = result.verificationFlow?.find(s => s.id === node.id)?.status;
+                        return status === 'success' ? '#22c55e' :
+                               status === 'warning' ? '#eab308' :
+                               status === 'error' ? '#ef4444' : '#3b82f6';
+                      }}
+                    />
+                  </ReactFlow>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {history.length > 0 && (
-          <div className="mt-8">
+          <div className="mt-8 max-w-5xl mx-auto">
             <h3 className="text-sm font-medium text-neutral-400 mb-3 text-center">Recent checks</h3>
             <div className="grid grid-cols-1 gap-2">
               {history.map((item, index) => (
@@ -399,7 +716,14 @@ function FactCheckTool() {
                     item.confidence === 0 ? 'border-yellow-500/20 bg-yellow-500/5 hover:bg-yellow-500/10' : 
                     'border-green-500/20 bg-green-500/5 hover:bg-green-500/10'
                   }`}
-                  onClick={() => setResult(item)}
+                  onClick={() => {
+                    setResult(item);
+                    if (item.verificationFlow) {
+                      const { nodes: flowNodes, edges: flowEdges } = generateFlowNodes(item.verificationFlow);
+                      setNodes(flowNodes);
+                      setEdges(flowEdges);
+                    }
+                  }}
                 >
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-neutral-300 truncate flex-1">
