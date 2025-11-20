@@ -11,12 +11,19 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   MarkerType,
-  Panel,
 } from 'reactflow';
 // @ts-ignore: Allow importing CSS side-effects without type declarations
 import 'reactflow/dist/style.css';
-import { Download, Share2, ExternalLink } from 'lucide-react';
+import { Download, Share2, ExternalLink, Languages } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/app/api/translate/route';
 
 // @ts-ignore
 const chrome = (typeof window !== "undefined" && (window as any).chrome) ? (window as any).chrome : undefined;
@@ -43,6 +50,17 @@ type VerificationStep = {
   timestamp?: number;
 };
 
+type TranslationCache = {
+  [key in LanguageCode]?: {
+    summary: string;
+    reasons: string[];
+    verificationFlow?: Array<{
+      label: string;
+      details: string;
+    }>;
+  };
+};
+
 function FactCheckTool() {
   const [input, setInput] = useState('');
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -52,6 +70,11 @@ function FactCheckTool() {
   const [showDiagram, setShowDiagram] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  
+  // Translation states
+  const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>('en');
+  const [translations, setTranslations] = useState<TranslationCache>({});
+  const [translating, setTranslating] = useState(false);
 
   function isValidUrl(url: string) {
     try {
@@ -151,6 +174,113 @@ function FactCheckTool() {
     };
   }, [isExtension]);
 
+  /**
+   * Fetch translations when result changes
+   */
+  const fetchTranslations = useCallback(async () => {
+    if (!result || result.confidence === 0) return;
+    
+    // Check if we already have translations
+    if (Object.keys(translations).length > 1) {
+      console.log('✅ Using cached translations');
+      return;
+    }
+    
+    setTranslating(true);
+    
+    try {
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          summary: result.summary,
+          reasons: result.reasons || [],
+          isFake: result.isFake,
+          confidence: result.confidence,
+          verificationFlow: result.verificationFlow?.map(step => ({
+            id: step.id,
+            label: step.label,
+            details: step.details,
+          })),
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Translation failed');
+      
+      const data = await response.json();
+      setTranslations(data.translations || {});
+      console.log('✅ Translations loaded');
+      
+    } catch (error) {
+      console.error('❌ Translation fetch error:', error);
+      // Keep English only
+      setTranslations({
+        en: {
+          summary: result.summary,
+          reasons: result.reasons || [],
+          verificationFlow: result.verificationFlow?.map(step => ({
+            label: step.label,
+            details: step.details,
+          })),
+        },
+      });
+    } finally {
+      setTranslating(false);
+    }
+  }, [result, translations]);
+
+  /**
+   * Handle language change
+   */
+  const handleLanguageChange = async (lang: LanguageCode) => {
+    setSelectedLanguage(lang);
+    
+    // Fetch translations if not already loaded
+    if (Object.keys(translations).length <= 1 && result) {
+      await fetchTranslations();
+    }
+    
+    // Wait a bit for state to update, then regenerate flow nodes with new language
+    setTimeout(() => {
+      if (result?.verificationFlow && showDiagram) {
+        const currentTranslations = translations[lang] ?? translations['en'] ?? undefined;
+        const translatedFlow = (currentTranslations && currentTranslations.verificationFlow && currentTranslations.verificationFlow.length > 0)
+          ? currentTranslations.verificationFlow
+          : result.verificationFlow.map(step => ({
+            label: step.label,
+            details: step.details,
+          }));
+        
+        const { nodes: flowNodes, edges: flowEdges } = generateFlowNodes(result.verificationFlow, translatedFlow);
+        setNodes(flowNodes);
+        setEdges(flowEdges);
+      }
+    }, 100);
+  };
+
+  /**
+   * Get translated content for current language
+   */
+  const getTranslatedContent = useCallback(() => {
+    if (!result) return { summary: '', reasons: [], verificationFlow: [] };
+    
+    const translation = translations[selectedLanguage];
+    
+    if (translation) {
+      return translation;
+    }
+    
+    // Fallback to English
+    return {
+      summary: result.summary,
+      reasons: result.reasons || [],
+      verificationFlow: result.verificationFlow?.map(step => ({
+        label: step.label,
+        details: step.details,
+      })) || [],
+    };
+  }, [result, translations, selectedLanguage]);
+
   const buildVerificationFlow = useCallback((data: any, inputContent: string): VerificationStep[] => {
     const steps: VerificationStep[] = [];
 
@@ -186,9 +316,8 @@ function FactCheckTool() {
       });
     }
 
-    // ==== improved Step 3: Fact Check Database ====
+    // Step 3: Fact Check Database (improved)
     const parseClaimRating = (claim: any) => {
-      // try claimReview first (Google Fact Check Tools)
       const review = (claim.claimReview && claim.claimReview[0]) || (claim.reviewers && claim.reviewers[0]) || null;
       let ratingText = '';
 
@@ -201,9 +330,7 @@ function FactCheckTool() {
           '';
       }
 
-      // fallback: some providers put publisher/rating elsewhere
       ratingText = ratingText || (claim.textualRating || claim.rating || '');
-
       return ratingText.toString().trim().toLowerCase();
     };
 
@@ -215,7 +342,6 @@ function FactCheckTool() {
         if (review.publisher && review.publisher.url) urls.push(review.publisher.url);
         if (review.publisher && review.publisher.site) urls.push(review.publisher.site);
       }
-      // some responses include claimReview[].claimReviewUrl or claim.url
       if (claim.url) urls.push(claim.url);
       return urls.filter(Boolean);
     };
@@ -287,7 +413,7 @@ function FactCheckTool() {
       });
     }
 
-    // Step 5: URL Safety Check (if URL provided)
+    // Step 5: URL Safety Check
     if (data.safetyCheck) {
       steps.push({
         id: '5',
@@ -325,15 +451,22 @@ function FactCheckTool() {
     return steps;
   }, []);
 
-  const generateFlowNodes = useCallback((steps: VerificationStep[]): { nodes: Node[], edges: Edge[] } => {
+  // Update generateFlowNodes to accept translatedFlow as a parameter
+  const generateFlowNodes = useCallback((steps: VerificationStep[], translatedFlow?: Array<{ label: string; details: string }>): { nodes: Node[], edges: Edge[] } => {
     const nodeWidth = 280;
     const nodeHeight = 120;
     const horizontalSpacing = 350;
     const verticalSpacing = 200;
     
+    // Use provided translatedFlow or empty array
+    const flowTranslations = translatedFlow || [];
+    
     const nodes: Node[] = steps.map((step, index) => {
       const row = Math.floor(index / 3);
       const col = index % 3;
+      
+      // Find matching translated step
+      const translatedStep = flowTranslations[index] || { label: step.label, details: step.details };
       
       return {
         id: step.id,
@@ -346,7 +479,7 @@ function FactCheckTool() {
           label: (
             <div className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-sm">{step.label}</span>
+                <span className="font-semibold text-sm">{translatedStep.label}</span>
                 <span className={`text-xs px-2 py-1 rounded-full ${
                   step.status === 'success' ? 'bg-green-500/20 text-green-400' :
                   step.status === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
@@ -358,7 +491,7 @@ function FactCheckTool() {
                    step.status === 'error' ? '✕' : '⋯'}
                 </span>
               </div>
-              <p className="text-xs text-neutral-400 mb-2">{step.details}</p>
+              <p className="text-xs text-neutral-400 mb-2">{translatedStep.details}</p>
               {step.sources && step.sources.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {step.sources.slice(0, 2).map((source, i) => (
@@ -417,6 +550,8 @@ function FactCheckTool() {
     setResult(null);
     setLoading(true);
     setShowDiagram(false);
+    setTranslations({});
+    setSelectedLanguage('en');
 
     try {
       if (!input.trim()) {
@@ -460,7 +595,13 @@ function FactCheckTool() {
       const data = await response.json();
       
       const verificationFlow = buildVerificationFlow(data, input.trim());
-      const { nodes: flowNodes, edges: flowEdges } = generateFlowNodes(verificationFlow);
+      
+      // Generate initial English flow nodes
+      const englishFlow = verificationFlow.map(step => ({
+        label: step.label,
+        details: step.details,
+      }));
+      const { nodes: flowNodes, edges: flowEdges } = generateFlowNodes(verificationFlow, englishFlow);
       
       setNodes(flowNodes);
       setEdges(flowEdges);
@@ -480,6 +621,11 @@ function FactCheckTool() {
       
       setResult(newResult);
       setHistory(prev => [newResult, ...prev.slice(0, 4)]);
+      
+      // Auto-fetch translations after successful analysis
+      if (newResult.confidence > 0) {
+        setTimeout(() => fetchTranslations(), 500);
+      }
 
     } catch (error) {
       setResult({
@@ -501,12 +647,15 @@ function FactCheckTool() {
     setInput('');
     setResult(null);
     setShowDiagram(false);
+    setTranslations({});
+    setSelectedLanguage('en');
   };
 
   const shareResults = async () => {
     if (!result) return;
 
-    const shareText = `${input || 'Content'}\n\nVerified: ${result.isFake ? 'Likely False' : 'Likely True'} (${result.confidence}% confidence)\n\nSummary: ${result.summary}`;
+    const { summary, reasons } = getTranslatedContent();
+    const shareText = `${input || 'Content'}\n\nVerified: ${result.isFake ? 'Likely False' : 'Likely True'} (${result.confidence}% confidence)\n\nSummary: ${summary}`;
 
     if (navigator.share) {
       try {
@@ -547,6 +696,8 @@ function FactCheckTool() {
     }
   };
 
+  const translatedContent = getTranslatedContent();
+
   return (
     <div id="fact-checker" className="relative min-h-screen flex items-center justify-center px-4 py-20 bg-muted/50 dark:bg-background">
       <div
@@ -556,9 +707,9 @@ function FactCheckTool() {
         )}
       />
 
-      <div className="relative z-10 text-left max-w-7xl mx-auto w-full">
-        <div className="mb-12">
-          <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-4">
+      <div className="relative z-10 text-left max-w-5xl mx-auto w-full">
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 mb-8">
             AI-Powered Fact Checker
           </h2>
           <p className="text-neutral-400 text-lg max-w-2xl mx-auto">
@@ -614,6 +765,44 @@ function FactCheckTool() {
         {result && (
           <div className="mt-8 max-w-5xl mx-auto">
             <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6">
+              {/* Language Selector */}
+              {result.confidence > 0 && (
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Languages className="w-4 h-4 text-neutral-400" />
+                    <span className="text-xs text-neutral-400">Language:</span>
+                  </div>
+                  <Select
+                    value={selectedLanguage}
+                    onValueChange={handleLanguageChange}
+                    disabled={translating}
+                  >
+                    <SelectTrigger className="w-[180px] bg-neutral-800 border-neutral-700">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => (
+                        <SelectItem key={code} value={code}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {translating && (
+                <div className="mb-4 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm text-blue-400">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Loading translations...</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-start space-x-4">
                 <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-2xl ${
                   result.isFake ? 'bg-red-500/20 text-red-400' : 
@@ -647,16 +836,18 @@ function FactCheckTool() {
                   )}
                   
                   <div className="mb-4">
-                    <p className="text-neutral-300 text-sm leading-relaxed">{result.summary}</p>
+                    <p className="text-neutral-300 text-sm leading-relaxed">
+                      {translatedContent.summary}
+                    </p>
                   </div>
                   
-                  {result.reasons && result.reasons.length > 0 && (
+                  {translatedContent.reasons && translatedContent.reasons.length > 0 && (
                     <div className="mb-4">
                       <h4 className="text-sm font-medium text-neutral-100 mb-2">
                         {result.confidence === 0 ? 'Issues:' : result.isFake ? 'Red Flags:' : 'Indicators:'}
                       </h4>
                       <ul className="text-neutral-400 text-sm space-y-1">
-                        {result.reasons.map((reason, i) => (
+                        {translatedContent.reasons.map((reason, i) => (
                           <li key={i} className="flex items-start">
                             <span className="mr-2 mt-1">•</span>
                             <span className="flex-1">{reason}</span>
@@ -765,8 +956,14 @@ function FactCheckTool() {
                   }`}
                   onClick={() => {
                     setResult(item);
+                    setTranslations({});
+                    setSelectedLanguage('en');
                     if (item.verificationFlow) {
-                      const { nodes: flowNodes, edges: flowEdges } = generateFlowNodes(item.verificationFlow);
+                      const englishFlow = item.verificationFlow.map(step => ({
+                        label: step.label,
+                        details: step.details,
+                      }));
+                      const { nodes: flowNodes, edges: flowEdges } = generateFlowNodes(item.verificationFlow, englishFlow);
                       setNodes(flowNodes);
                       setEdges(flowEdges);
                     }

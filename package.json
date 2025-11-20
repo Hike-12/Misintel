@@ -12,6 +12,7 @@
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
     "@google/generative-ai": "^0.17.1",
+    "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.10.51",
@@ -25,6 +26,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.28",
+    "groq-sdk": "^0.36.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.540.0",
     "motion": "^12.23.12",
