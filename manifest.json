@@ -17,7 +17,8 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["public/content.js"]
+      "js": ["public/content.js"],
+      "css": ["public/content.css"]
     }
   ],
   "permissions": [

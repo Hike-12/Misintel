@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-
 import Groq from 'groq-sdk';
 import { redis } from '@/lib/redis';
-
-export const SUPPORTED_LANGUAGES = {
-  en: 'English',
-  hi: 'Hindi (हिन्दी)',
-  bn: 'Bengali (বাংলা)',
-  ta: 'Tamil (தமிழ்)',
-  te: 'Telugu (తెలుగు)',
-  mr: 'Marathi (मराठी)',
-  gu: 'Gujarati (ગુજરાતી)',
-  pa: 'Punjabi (ਪੰਜਾਬੀ)',
-} as const;
-
-export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES;
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/lib/translation-types';
 
 const TRANSLATION_CACHE_TTL = 180; // 3 minutes
 
@@ -61,7 +47,7 @@ async function cacheTranslations(contentHash: string, translations: Record<strin
   }
 }
 
-export type TranslatedResult = {
+type TranslatedResult = {
   summary: string;
   reasons: string[];
   verificationFlow?: {
@@ -70,7 +56,7 @@ export type TranslatedResult = {
   }[];
 };
 
-export async function translateAnalysisResult(
+async function translateAnalysisResult(
   result: {
     summary: string;
     reasons: string[];

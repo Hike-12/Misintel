@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build:popup-css": "npx tailwindcss -i ./public/popup.css -o ./public/popup.css --minify"
+    "build:popup-css": "npx tailwindcss -i ./public/popup.css -o ./public/popup.css --minify",
+    "build:extension": "vite build"
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",

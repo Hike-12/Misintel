@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/app/api/translate/route';
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/lib/translation-types';
 
 // @ts-ignore
 const chrome = (typeof window !== "undefined" && (window as any).chrome) ? (window as any).chrome : undefined;
@@ -280,6 +280,61 @@ function FactCheckTool() {
       })) || [],
     };
   }, [result, translations, selectedLanguage]);
+
+  /**
+   * Handle scan page button click (extension only)
+   */
+  const handleScanPage = async () => {
+    if (!isExtension || !chrome.tabs) return;
+    
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      if (!tab.id) {
+        alert('No active tab found');
+        return;
+      }
+
+      // Ensure the tab has a valid URL
+      if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+        alert('Cannot scan Chrome system pages. Please visit a regular website.');
+        return;
+      }
+
+      console.log('Sending scanPage message to tab:', tab.id);
+      
+      // Send message with a callback to confirm receipt
+      chrome.tabs.sendMessage(tab.id, { action: 'scanPage' }, (response: any) => {
+        if (chrome.runtime.lastError) {
+          console.error('Message error:', chrome.runtime.lastError);
+          alert('Failed to scan page. Please refresh the page and try again.');
+        } else {
+          console.log('Message sent successfully:', response);
+          // Close the popup after successful message send
+          setTimeout(() => window.close(), 100);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to scan page:', error);
+      alert('Failed to scan page. Make sure you are on a valid webpage.');
+    }
+  };
+
+  /**
+   * Handle clear highlights button click (extension only)
+   */
+  const handleClearHighlights = async () => {
+    if (!isExtension || !chrome.tabs) return;
+    
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab.id) {
+        chrome.tabs.sendMessage(tab.id, { action: 'clearHighlights' });
+      }
+    } catch (error) {
+      console.error('Failed to clear highlights:', error);
+    }
+  };
 
   const buildVerificationFlow = useCallback((data: any, inputContent: string): VerificationStep[] => {
     const steps: VerificationStep[] = [];
@@ -718,6 +773,29 @@ function FactCheckTool() {
         </div>
 
         <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6 max-w-5xl mx-auto">
+          {/* Extension-only page scan button */}
+          {isExtension && (
+            <div className="mb-6 space-y-2">
+              <button
+                type="button"
+                onClick={handleScanPage}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center text-sm gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Scan This Page for Misinformation
+              </button>
+              <button
+                type="button"
+                onClick={handleClearHighlights}
+                className="w-full bg-neutral-700 hover:bg-neutral-600 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center text-xs gap-2"
+              >
+                Clear Highlights
+              </button>
+            </div>
+          )}
+          
           <div className="flex gap-3 mb-6 justify-center">
             {(['text', 'url'] as const).map((type) => (
               <button
