@@ -12,6 +12,10 @@ export type AnalysisResult = {
   newsResults?: any[];
   inputText?: string;
   inputUrl?: string;
+  timestamp?: string;
+  fromCache?: boolean;
+  cachedAt?: string;
+  extractedText?: string;
 };
 
 export type RateLimitResult = {

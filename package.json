@@ -1,5 +1,5 @@
 {
-  "name": "truthguard-misinformation-detector",
+  "name": "misintel",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,16 +7,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "build:popup-css": "npx tailwindcss -i ./public/popup.css -o ./public/popup.css --minify"
+    "build:popup-css": "npx tailwindcss -i ./public/popup.css -o ./public/popup.css --minify",
+    "build:extension": "vite build"
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
     "@google/generative-ai": "^0.17.1",
+    "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.10.51",
     "@tabler/icons-react": "^3.34.1",
     "@types/three": "^0.179.0",
+    "@upstash/redis": "^1.35.6",
     "autoprefixer": "^10.4.21",
     "axios": "^1.12.2",
     "cheerio": "^1.1.2",
@@ -24,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.28",
+    "groq-sdk": "^0.36.0",
     "gsap": "^3.13.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.540.0",
