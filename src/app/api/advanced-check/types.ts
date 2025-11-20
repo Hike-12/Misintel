@@ -15,6 +15,7 @@ export type AnalysisResult = {
   timestamp?: string;
   fromCache?: boolean;
   cachedAt?: string;
+  extractedText?: string;
 };
 
 export type RateLimitResult = {
