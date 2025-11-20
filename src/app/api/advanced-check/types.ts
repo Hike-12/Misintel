@@ -16,6 +16,15 @@ export type AnalysisResult = {
   fromCache?: boolean;
   cachedAt?: string;
   extractedText?: string;
+  author?: {
+    name: string;
+    credibility_score?: number;
+    previous_articles?: Array<{
+      title: string;
+      url: string;
+      date: string;
+    }>;
+  } | null;
 };
 
 export type RateLimitResult = {
