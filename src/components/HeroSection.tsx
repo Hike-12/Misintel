@@ -1,6 +1,6 @@
 'use client'
 import { Button } from '@/components/ui/button'
-import Image from 'next/image'
+import PixelTransition from '@/components/PixelTransition'
 
 export default function HeroSection() {
     const handleFactCheckingClick = (e?: React.MouseEvent) => {
@@ -12,6 +12,9 @@ export default function HeroSection() {
             window.scrollTo({ top: targetPosition, behavior: 'smooth' });
         }
     };
+
+    // Common class for the silver gradient text
+    const silverGradientText = "bg-gradient-to-b from-neutral-50 to-neutral-400 bg-clip-text text-transparent";
 
     return (
         <>
@@ -27,41 +30,85 @@ export default function HeroSection() {
                 <section className="mt-12 md:mt-20 bg-muted/50 dark:bg-background overflow-hidden">
                     <div className="relative mx-auto max-w-5xl px-6 pt-28 lg:pt-24">
                         <div className="relative z-10 mx-auto text-center">
-                            <h1 className="text-balance text-4xl font-semibold md:text-5xl lg:text-6xl">
+                            <h1 className="text-balance text-4xl font-semibold md:text-5xl lg:text-6xl bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
                                 Verify anything with MisIntel
                             </h1>
-                            <p className="text-muted-foreground mx-auto my-10 max-w-2xl text-xl">
+                            <p className="text-neutral-400 mx-auto my-10 max-w-2xl text-xl">
                                 Empower your decisions with AI-driven fact-checking and misinformation detection.
                             </p>
 
                             <Button
-                            onClick={handleFactCheckingClick}
+                                onClick={handleFactCheckingClick}
                                 asChild
-                                size="lg" className='cursor-pointer mb-4'>
-                                    <span className="btn-label">Start Checking</span>
+                                size="lg" 
+                                className='cursor-pointer mb-16 bg-gradient-to-b from-neutral-50 to-neutral-400 text-black hover:from-neutral-100 hover:to-neutral-500'>
+                                <span className="btn-label">Start Checking</span>
                             </Button>
                         </div>
                     </div>
 
-                    <div className="mx-auto 2xl:max-w-7xl mb-12 md:mb-20">
-                        <div className="perspective-distant pl-8 lg:pl-44">
-                            <div className="lg:h-176 rotate-x-20 mask-b-from-55% mask-b-to-100% mask-r-from-75% skew-x-12 pl-6 pt-6">
-                                <Image
-                                    className="rounded-(--radius) border shadow-xl dark:hidden"
-                                    src="/misintel-hero-bg.jpg"
-                                    alt="MisIntel hero section"
-                                    width={2880}
-                                    height={2074}
+                    <div className="mx-auto max-w-7xl mb-12 md:mb-20 flex justify-center px-6">
+                        <PixelTransition
+                            firstContent={
+                                <img
+                                    src="/trump-tweet.jpg"
+                                    alt="Social media post example"
+                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                 />
-                                <Image
-                                    className="rounded-(--radius) hidden border shadow-xl dark:block"
-                                    src="/misintel-hero-bg.jpg"
-                                    alt="MisIntel hero section"
-                                    width={2880}
-                                    height={2074}
-                                />
-                            </div>
-                        </div>
+                            }
+                            secondContent={
+                                <div
+                                    style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: "black", /* CHANGED: Set to solid black */
+                                        padding: "2rem"
+                                    }}
+                                >
+                                    <div style={{ textAlign: "center", maxWidth: "90%" }}>
+                                        <p className={silverGradientText} style={{ 
+                                            fontWeight: 900, 
+                                            fontSize: "2rem", 
+                                            marginBottom: "1rem",
+                                            lineHeight: "1.2"
+                                        }}>
+                                            SIKE! This was Fake
+                                        </p>
+                                        <p className={silverGradientText} style={{ 
+                                            fontWeight: 600, 
+                                            fontSize: "1.1rem", 
+                                            marginBottom: "0.75rem",
+                                            lineHeight: "1.4"
+                                        }}>
+                                            Fake headline sends Wall Street into US$2.4 trillion whiplash
+                                        </p>
+                                        <p className={silverGradientText} style={{ 
+                                            fontWeight: 400, 
+                                            fontSize: "0.95rem", 
+                                            lineHeight: "1.5"
+                                        }}>
+                                            Don't believe everything you see online. Always verify first.
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                            gridSize={14}
+                            pixelColor='#e5e5e5'
+                            once={false}
+                            animationStepDuration={0.5}
+                            className="w-full max-w-lg"
+                            style={{ 
+                                width: '100%', 
+                                maxWidth: '600px',
+                                backgroundColor: 'transparent',
+                                border: '2px solid rgba(229, 229, 229, 0.2)',
+                                borderRadius: '20px'
+                            }}
+                            aspectRatio="65%"
+                        />
                     </div>
                 </section>
             </main>
