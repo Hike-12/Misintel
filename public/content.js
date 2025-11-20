@@ -51,63 +51,84 @@
       }
     );
 
+    // Normalize search text more aggressively
+    const normalizedSearchText = searchText.replace(/\s+/g, ' ').trim().toLowerCase();
+    const searchWords = normalizedSearchText.split(' ').filter(w => w.length > 3); // Key words only
+
     let node;
     while (node = walker.nextNode()) {
       const nodeText = node.nodeValue || '';
-      // Match allowing for some whitespace differences
-      const normalizedNodeText = nodeText.replace(/\s+/g, ' ').trim();
-      const normalizedSearchText = searchText.replace(/\s+/g, ' ').trim();
+      const normalizedNodeText = nodeText.replace(/\s+/g, ' ').trim().toLowerCase();
       
+      // Try exact match first
       if (normalizedNodeText.includes(normalizedSearchText)) {
         results.push(node);
         if (results.length >= maxResults) break;
       }
+      // Try partial match with key words (at least 70% of words match)
+      else if (searchWords.length >= 3) {
+        const matchCount = searchWords.filter(word => normalizedNodeText.includes(word)).length;
+        if (matchCount >= Math.ceil(searchWords.length * 0.7)) {
+          results.push(node);
+          if (results.length >= maxResults) break;
+        }
+      }
     }
 
+    console.log(`Found ${results.length} text nodes for: "${searchText.substring(0, 50)}..."`);
     return results;
   }
 
   // Highlight text with severity color
   function highlightText(textNode, searchText, severity, reason) {
-    const parent = textNode.parentElement;
-    if (!parent) return;
+    try {
+      const parent = textNode.parentElement;
+      if (!parent || !parent.isConnected) return;
 
-    const text = textNode.nodeValue || '';
-    const normalizedText = text.replace(/\s+/g, ' ');
-    const normalizedSearch = searchText.replace(/\s+/g, ' ').trim();
-    
-    const index = normalizedText.toLowerCase().indexOf(normalizedSearch.toLowerCase());
-    if (index === -1) return;
+      const text = textNode.nodeValue || '';
+      const normalizedText = text.replace(/\s+/g, ' ');
+      const normalizedSearch = searchText.replace(/\s+/g, ' ').trim();
+      
+      const index = normalizedText.toLowerCase().indexOf(normalizedSearch.toLowerCase());
+      if (index === -1) return;
 
-    // Create highlight span
-    const span = document.createElement('span');
-    span.className = `misintel-highlight misintel-highlight-${severity}`;
-    span.setAttribute('data-misintel-reason', reason);
-    span.setAttribute('data-misintel-original', 'true');
+      // Create highlight span
+      const span = document.createElement('span');
+      span.className = `misintel-highlight misintel-highlight-${severity}`;
+      span.setAttribute('data-misintel-reason', reason);
+      span.setAttribute('data-misintel-severity', severity);
 
-    // Split text and wrap matched portion
-    const range = document.createRange();
-    const beforeText = text.substring(0, index);
-    const matchText = text.substring(index, index + searchText.length);
-    const afterText = text.substring(index + searchText.length);
+      // Split text and wrap matched portion
+      const beforeText = text.substring(0, index);
+      const matchText = text.substring(index, index + searchText.length);
+      const afterText = text.substring(index + searchText.length);
 
-    const beforeNode = document.createTextNode(beforeText);
-    const matchNode = document.createTextNode(matchText);
-    const afterNode = document.createTextNode(afterText);
+      span.textContent = matchText;
 
-    span.appendChild(matchNode);
+      // Use fragment for safer DOM manipulation
+      const fragment = document.createDocumentFragment();
+      
+      if (beforeText) {
+        fragment.appendChild(document.createTextNode(beforeText));
+      }
+      fragment.appendChild(span);
+      if (afterText) {
+        fragment.appendChild(document.createTextNode(afterText));
+      }
 
-    // Replace original text node
-    parent.insertBefore(beforeNode, textNode);
-    parent.insertBefore(span, textNode);
-    parent.insertBefore(afterNode, textNode);
-    parent.removeChild(textNode);
-
-    // Add tooltip on hover
-    span.addEventListener('mouseenter', showTooltip);
-    span.addEventListener('mouseleave', hideTooltip);
-
-    highlights.push(span);
+      // Replace original text node safely
+      if (parent.isConnected && textNode.parentNode === parent) {
+        parent.replaceChild(fragment, textNode);
+        
+        // Add tooltip on hover
+        span.addEventListener('mouseenter', showTooltip);
+        span.addEventListener('mouseleave', hideTooltip);
+        
+        highlights.push(span);
+      }
+    } catch (error) {
+      console.error('Error highlighting text:', error);
+    }
   }
 
   // Show tooltip with reason
@@ -176,6 +197,23 @@
       <div class="misintel-summary-body">
         ${isSatire ? '<div class="misintel-satire-badge">😄 Satire/Parody Detected</div>' : ''}
         <div class="misintel-assessment">${overallAssessment}</div>
+        
+        <div class="misintel-legend">
+          <div class="misintel-legend-title">Color Guide:</div>
+          <div class="misintel-legend-item">
+            <span class="misintel-legend-color misintel-legend-high"></span>
+            <span class="misintel-legend-text">High Risk - False claims</span>
+          </div>
+          <div class="misintel-legend-item">
+            <span class="misintel-legend-color misintel-legend-medium"></span>
+            <span class="misintel-legend-text">Medium Risk - Questionable</span>
+          </div>
+          <div class="misintel-legend-item">
+            <span class="misintel-legend-color misintel-legend-low"></span>
+            <span class="misintel-legend-text">Low Risk - Clickbait</span>
+          </div>
+        </div>
+        
         <div class="misintel-stats">
           <div class="misintel-stat misintel-stat-high">
             <span class="misintel-stat-label">High Risk</span>
@@ -203,24 +241,89 @@
     });
     
     document.getElementById('misintel-clear-highlights').addEventListener('click', clearHighlights);
+    
+    // Add click to scroll functionality for stats
+    const stats = summaryPanel.querySelectorAll('.misintel-stat');
+    stats.forEach(stat => {
+      stat.style.cursor = 'pointer';
+      stat.addEventListener('click', () => {
+        const severity = stat.classList.contains('misintel-stat-high') ? 'high' :
+                        stat.classList.contains('misintel-stat-medium') ? 'medium' : 'low';
+        scrollToNextHighlight(severity);
+      });
+    });
+  }
+
+  // Scroll to next highlight of specific severity
+  let currentHighlightIndex = { high: -1, medium: -1, low: -1 };
+  
+  function scrollToNextHighlight(severity) {
+    const severityHighlights = highlights.filter(h => 
+      h.classList.contains(`misintel-highlight-${severity}`)
+    );
+    
+    if (severityHighlights.length === 0) {
+      console.log(`No ${severity} risk highlights found`);
+      return;
+    }
+    
+    // Cycle through highlights
+    currentHighlightIndex[severity] = (currentHighlightIndex[severity] + 1) % severityHighlights.length;
+    const targetHighlight = severityHighlights[currentHighlightIndex[severity]];
+    
+    // Remove previous focus
+    highlights.forEach(h => h.style.outline = '');
+    
+    // Add focus ring
+    targetHighlight.style.outline = '3px solid rgba(255, 255, 255, 0.8)';
+    targetHighlight.style.outlineOffset = '2px';
+    
+    // Scroll to highlight
+    targetHighlight.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'center' 
+    });
+    
+    // Flash animation
+    targetHighlight.style.transition = 'transform 0.3s ease';
+    targetHighlight.style.transform = 'scale(1.1)';
+    setTimeout(() => {
+      targetHighlight.style.transform = 'scale(1)';
+      setTimeout(() => {
+        targetHighlight.style.outline = '';
+      }, 2000);
+    }, 300);
+    
+    console.log(`Scrolled to ${severity} highlight ${currentHighlightIndex[severity] + 1}/${severityHighlights.length}`);
   }
 
   // Clear all highlights
   function clearHighlights() {
     highlights.forEach(span => {
-      const text = span.textContent;
-      const textNode = document.createTextNode(text);
-      span.parentNode.replaceChild(textNode, span);
+      try {
+        if (span.parentNode && span.isConnected) {
+          const text = span.textContent;
+          const textNode = document.createTextNode(text);
+          span.parentNode.replaceChild(textNode, span);
+        }
+      } catch (error) {
+        console.error('Error clearing highlight:', error);
+      }
     });
     highlights = [];
+    currentHighlightIndex = { high: -1, medium: -1, low: -1 };
     
     if (summaryPanel) {
       summaryPanel.remove();
       summaryPanel = null;
     }
     
-    // Normalize text nodes
-    document.body.normalize();
+    // Normalize text nodes safely
+    try {
+      document.body.normalize();
+    } catch (error) {
+      console.error('Error normalizing DOM:', error);
+    }
   }
 
   // Main scan function
@@ -265,12 +368,19 @@
       const { analysis } = data;
       
       // Highlight suspicious content
-      analysis.suspiciousContent.forEach(item => {
+      console.log('Attempting to highlight', analysis.suspiciousContent.length, 'items');
+      analysis.suspiciousContent.forEach((item, idx) => {
+        console.log(`Item ${idx + 1} [${item.severity}]: "${item.text.substring(0, 60)}..."`);
         const nodes = findTextNodes(item.text, 5);
+        if (nodes.length === 0) {
+          console.warn(`⚠️ Could not find text nodes for: "${item.text.substring(0, 60)}..."`);
+        }
         nodes.forEach(node => {
           highlightText(node, item.text, item.severity, item.reason);
         });
       });
+      
+      console.log('✓ Highlighting complete. Total highlights applied:', highlights.length);
       
       // Show summary
       showSummaryPanel(analysis);

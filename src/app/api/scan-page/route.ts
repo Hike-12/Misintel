@@ -32,29 +32,35 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `You are an expert fact-checker analyzing web page content for potential misinformation, misleading claims, or suspicious content.
+          content: `You are a highly trained fact-checker. ONLY flag content if you have strong evidence it's misleading or false. Be conservative - it's better to miss something than to over-flag.
 
-Your task is to:
-1. Identify specific text snippets that may contain misinformation, misleading claims, or clickbait
-2. Distinguish between satire/jokes and actual misinformation
-3. Provide severity levels: "high" (likely false/misleading), "medium" (questionable/needs verification), "low" (potentially misleading context)
-4. Give brief reasons for flagging each snippet
+STRICT CRITERIA:
+- HIGH: Demonstrably false claims, conspiracy theories, clear misinformation (rare - only use for obvious falsehoods)
+- MEDIUM: Unverified claims that contradict established facts or use manipulative framing (use sparingly)
+- LOW: Clickbait headlines or sensationalized language without clear falsehoods (minimal use)
 
-Return ONLY a valid JSON object with this structure:
+DO NOT FLAG:
+- Opinion pieces, analysis, or commentary
+- Statistical claims with sources
+- Future predictions or speculation
+- Satirical content
+- Emotional language that doesn't make false claims
+- Personal stories or anecdotes
+
+Return ONLY valid JSON:
 {
   "suspiciousContent": [
     {
-      "text": "exact text snippet from page (max 200 chars)",
+      "text": "exact snippet (max 150 chars)",
       "severity": "high" | "medium" | "low",
-      "reason": "brief explanation (max 100 chars)"
+      "reason": "specific fact-check reason (max 80 chars)"
     }
   ],
-  "overallAssessment": "brief overall summary",
+  "overallAssessment": "brief summary",
   "isSatire": true/false
 }
 
-If the page is satire/parody, set isSatire to true and include fewer items.
-If no suspicious content found, return empty suspiciousContent array.`,
+IMPORTANT: Return 0-3 items maximum unless dealing with heavy misinformation. Quality over quantity.`,
         },
         {
           role: 'user',
