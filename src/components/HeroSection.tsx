@@ -30,7 +30,7 @@ export default function HeroSection() {
                 <section className="mt-12 md:mt-20 bg-muted/50 dark:bg-background overflow-hidden">
                     <div className="relative mx-auto max-w-5xl px-6 pt-28 lg:pt-24">
                         <div className="relative z-10 mx-auto text-center">
-                            <h1 className="text-balance text-4xl font-semibold md:text-5xl lg:text-6xl bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
+                            <h1 className="text-balance text-4xl font-semibold md:text-5xl lg:text-6xl bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 pb-2">
                                 Verify anything with MisIntel
                             </h1>
                             <p className="text-neutral-400 mx-auto my-10 max-w-2xl text-xl">

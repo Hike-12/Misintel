@@ -24,6 +24,7 @@ export default function CrisisBanner() {
   // Use manual config instead of API
   const crisis = MANUAL_CRISIS_CONFIG;
 
+  // Don't render anything if dismissed or not active
   if (!crisis.active || dismissed) {
     return null;
   }
@@ -63,8 +64,15 @@ export default function CrisisBanner() {
 
   const styles = getSeverityStyles();
 
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDismissed(true);
+    console.log('Banner dismissed'); // Debug log
+  };
+
   return (
-    <div className={`w-full ${styles.bg} border-b-2 ${styles.border} py-4 z-50`}>
+    <div className={`w-full ${styles.bg} border-b-2 ${styles.border} py-4 z-50 fixed top-20`}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -76,9 +84,10 @@ export default function CrisisBanner() {
             </div>
           </div>
           <button
-            onClick={() => setDismissed(true)}
-            className={`flex-shrink-0 p-2 rounded hover:bg-black/5 ${styles.text}`}
+            onClick={handleDismiss}
+            className={`flex-shrink-0 p-2 rounded hover:bg-black/5 ${styles.text} transition-colors cursor-pointer`}
             aria-label="Dismiss alert"
+            type="button"
           >
             <X className="w-5 h-5" />
           </button>
