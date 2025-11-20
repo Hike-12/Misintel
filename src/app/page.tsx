@@ -13,7 +13,9 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background">
       <Navbar />
-      <CrisisBanner /> 
+      <div className="pt-20">
+        <CrisisBanner /> 
+      </div>
       <div>
         <section id="home">
           <HeroSection />
