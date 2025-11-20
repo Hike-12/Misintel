@@ -28,11 +28,39 @@ const chrome =
     ? (window as any).chrome
     : undefined;
 
+const HISTORY_STORAGE_KEY = 'misintel_history';
+
+// Helper functions for localStorage with error handling
+const saveToLocalStorage = (key: string, value: any) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    console.log(`💾 Saved ${key} to localStorage:`, value.length, 'items');
+  } catch (error) {
+    console.error(`Failed to save ${key}:`, error);
+  }
+};
+
+const loadFromLocalStorage = (key: string, defaultValue: any = null) => {
+  if (typeof window === 'undefined') return defaultValue;
+  try {
+    const item = localStorage.getItem(key);
+    if (!item) return defaultValue;
+    const parsed = JSON.parse(item);
+    console.log(`✅ Loaded ${key} from localStorage:`, parsed.length || 0, 'items');
+    return parsed;
+  } catch (error) {
+    console.error(`Failed to load ${key}:`, error);
+    return defaultValue;
+  }
+};
+
 function FactCheckTool() {
   const [input, setInput] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<AnalysisResult[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [inputType, setInputType] = useState<InputType>("text");
   const [showDiagram, setShowDiagram] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -48,6 +76,40 @@ function FactCheckTool() {
   const isExtension =
     typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id;
 
+  // Load history from localStorage on mount - ONLY ONCE
+  useEffect(() => {
+    if (historyLoaded) return;
+    
+    const loadedHistory = loadFromLocalStorage(HISTORY_STORAGE_KEY, []);
+    if (Array.isArray(loadedHistory)) {
+      setHistory(loadedHistory);
+      console.log('📚 History restored:', loadedHistory.length, 'items');
+    }
+    setHistoryLoaded(true);
+  }, [historyLoaded]);
+
+  // Save history to localStorage whenever it changes - BUT ONLY AFTER LOADED
+  useEffect(() => {
+    if (!historyLoaded) return; // Don't save until we've loaded first
+    saveToLocalStorage(HISTORY_STORAGE_KEY, history);
+  }, [history, historyLoaded]);
+
+  // Clear single history item
+  const clearHistoryItem = (index: number) => {
+    setHistory(prev => prev.filter((_, i) => i !== index));
+    console.log(`🗑️ Cleared history item at index ${index}`);
+  };
+
+  // Clear all history
+  const clearAllHistory = () => {
+    if (window.confirm('Are you sure you want to clear all history?')) {
+      setHistory([]);
+      localStorage.removeItem(HISTORY_STORAGE_KEY);
+      console.log('🗑️ All history cleared');
+    }
+  };
+
+  // ...existing code...
   // Load from localStorage on mount (for web app)
   useEffect(() => {
     if (isExtension) return;
@@ -104,7 +166,7 @@ function FactCheckTool() {
             chrome.storage.local.remove(
               ["selectedText", "fromContextMenu", "timestamp"],
               () => {
-                console.log("🧹 Storage cleared after successful fill");
+                console.log("✅ Storage cleaned");
               }
             );
           } else if (pollCount < MAX_POLLS && !foundText) {
@@ -144,9 +206,6 @@ function FactCheckTool() {
     };
   }, [isExtension]);
 
-  /**
-   * Fetch translations when result changes
-   */
   const fetchTranslations = useCallback(async () => {
     if (!result || result.confidence === 0) return;
 
@@ -196,9 +255,6 @@ function FactCheckTool() {
     }
   }, [result, translations]);
 
-  /**
-   * Handle language change
-   */
   const handleLanguageChange = async (lang: LanguageCode) => {
     setSelectedLanguage(lang);
 
@@ -230,9 +286,6 @@ function FactCheckTool() {
     }, 100);
   };
 
-  /**
-   * Get translated content for current language
-   */
   const getTranslatedContent = useCallback(() => {
     if (!result) return { summary: "", reasons: [], verificationFlow: [] };
 
@@ -253,9 +306,6 @@ function FactCheckTool() {
     };
   }, [result, translations, selectedLanguage]);
 
-  /**
-   * Handle scan page button click (extension only)
-   */
   const handleScanPage = async () => {
     if (!isExtension || !chrome.tabs) return;
     
@@ -289,9 +339,6 @@ function FactCheckTool() {
     }
   };
 
-  /**
-   * Handle clear highlights button click (extension only)
-   */
   const handleClearHighlights = async () => {
     if (!isExtension || !chrome.tabs) return;
     
@@ -426,7 +473,7 @@ function FactCheckTool() {
       };
 
       setResult(newResult);
-      setHistory((prev) => [newResult, ...prev.slice(0, 4)]);
+      setHistory((prev) => [newResult, ...prev.slice(0, 9)]);
 
       if (newResult.confidence > 0) {
         setTimeout(() => fetchTranslations(), 500);
@@ -577,86 +624,37 @@ function FactCheckTool() {
               disabled={
                 loading || (inputType === "image" ? !imageFile : !input.trim())
               }
-              className="w-full bg-gradient-to-b from-neutral-50 to-neutral-400 hover:from-neutral-100 hover:to-neutral-300 disabled:from-neutral-700 disabled:to-neutral-800 text-black font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center text-sm disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-black"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Analyzing...
-                </>
-              ) : (
-                "Verify Content"
+              className={cn(
+                "w-full py-3 px-6 rounded-lg font-medium transition-all duration-200",
+                "bg-gradient-to-r from-blue-500 to-blue-700",
+                "hover:from-blue-600 hover:to-blue-800",
+                "text-white",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                loading && "animate-pulse"
               )}
+            >
+              {loading ? "Analyzing..." : "Verify Content"}
             </button>
           </form>
         </div>
 
         {result && (
-          <div className="mt-8 max-w-5xl mx-auto">
-            <div className="bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6">
-              {result.confidence > 0 && (
-                <LanguageSelector 
-                  selectedLanguage={selectedLanguage}
-                  onLanguageChange={handleLanguageChange}
-                  translating={translating}
-                />
-              )}
-
-              {translating && (
-                <div className="mb-4 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-sm text-blue-400">
-                    <svg
-                      className="animate-spin h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    <span>Loading translations...</span>
-                  </div>
-                </div>
-              )}
-
-              <ResultDisplay 
-                result={result}
-                translatedContent={translatedContent}
-                onShare={shareResults}
-                onToggleDiagram={() => setShowDiagram(!showDiagram)}
-                showDiagram={showDiagram}
+          <div className="mt-8 bg-black/40 backdrop-blur-md border border-white/5 rounded-2xl p-6 max-w-5xl mx-auto">
+            {result.confidence > 0 && (
+              <LanguageSelector 
+                selectedLanguage={selectedLanguage}
+                onLanguageChange={handleLanguageChange}
+                translating={translating}
               />
-            </div>
+            )}
+
+            <ResultDisplay 
+              result={result}
+              translatedContent={translatedContent}
+              onShare={shareResults}
+              onToggleDiagram={() => setShowDiagram(!showDiagram)}
+              showDiagram={showDiagram}
+            />
 
             {showDiagram && result.verificationFlow && (
               <VerificationFlowDiagram 
@@ -674,6 +672,8 @@ function FactCheckTool() {
         <HistoryList 
           history={history}
           onSelectHistory={handleSelectHistory}
+          onClearHistory={clearHistoryItem}
+          onClearAllHistory={clearAllHistory}
         />
       </div>
     </div>
