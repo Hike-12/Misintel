@@ -212,6 +212,9 @@
             <span class="misintel-legend-color misintel-legend-low"></span>
             <span class="misintel-legend-text">Low Risk - Clickbait</span>
           </div>
+          <div class="misintel-legend-tip">
+            Click on stat boxes below to jump to highlights
+          </div>
         </div>
         
         <div class="misintel-stats">
