@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/utils/cn";
+import AuthorDisplay from '@/components/AuthorDisplay';
 import ReactFlow, {
   Node,
   Edge,
@@ -43,6 +44,15 @@ type AnalysisResult = {
   inputUrl?: string;
   verificationFlow?: VerificationStep[];
   extractedText?: string;
+  author?: {  // author
+    name: string;
+    credibility_score?: number;
+    previous_articles?: Array<{
+      title: string;
+      url: string;
+      date: string;
+    }>;
+  };
 };
 
 type VerificationStep = {
@@ -798,6 +808,7 @@ if (imageFile) {
             : data.inputText,
         inputUrl: inputType === "url" ? input.trim() : data.inputUrl,
         verificationFlow,
+        author: data.author || null // Add author data
       };
 
       setResult(newResult);
@@ -1206,6 +1217,10 @@ if (imageFile) {
                     </div>
                   )}
 
+                  
+                  {/* ADD AUTHOR DISPLAY HERE */}
+                  {result.author && <AuthorDisplay author={result.author} />}
+                  
                   <div className="flex gap-2">
                     {result.confidence > 0 && (
                       <button

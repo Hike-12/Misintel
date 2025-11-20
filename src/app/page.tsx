@@ -7,11 +7,13 @@ import CallToAction from '@/components/CallToAction';
 import WhatsAppExtension from '@/components/WhatsAppExtension';
 import Footer from '@/components/Footer';
 import TrendingNews from '@/components/TrendingNews';
+import CrisisBanner from '@/components/CrisisBanner';
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-background">
       <Navbar />
+      <CrisisBanner /> 
       <div>
         <section id="home">
           <HeroSection />
