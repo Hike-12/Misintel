@@ -1218,29 +1218,29 @@ if (imageFile) {
                   )}
 
                   
-                  {/* ADD AUTHOR DISPLAY HERE */}
-                  {result.author && <AuthorDisplay author={result.author} />}
-                  
-                  <div className="flex gap-2">
-                    {result.confidence > 0 && (
-                      <button
-                        onClick={shareResults}
-                        className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-200 rounded-lg transition-all duration-200 text-xs font-medium flex items-center gap-2"
-                      >
-                        <Share2 className="w-4 h-4" />
-                        Share Results
-                      </button>
-                    )}
+                 <div className="flex gap-2 mb-6">
+  {result.confidence > 0 && (
+    <button
+      onClick={shareResults}
+      className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-neutral-200 rounded-lg transition-all duration-200 text-xs font-medium flex items-center gap-2"
+    >
+      <Share2 className="w-4 h-4" />
+      Share Results
+    </button>
+  )}
 
-                    {result.verificationFlow && (
-                      <button
-                        onClick={() => setShowDiagram(!showDiagram)}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 text-xs font-medium"
-                      >
-                        {showDiagram ? "Hide" : "Show"} Verification Flow
-                      </button>
-                    )}
-                  </div>
+  {result.verificationFlow && (
+    <button
+      onClick={() => setShowDiagram(!showDiagram)}
+      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 text-xs font-medium"
+    >
+      {showDiagram ? "Hide" : "Show"} Verification Flow
+    </button>
+  )}
+</div>
+
+{/* ADD AUTHOR DISPLAY HERE */}
+{result.author && <AuthorDisplay author={result.author} />}
                 </div>
               </div>
             </div>
