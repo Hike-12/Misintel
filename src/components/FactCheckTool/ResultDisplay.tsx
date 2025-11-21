@@ -13,6 +13,28 @@ interface ResultDisplayProps {
   showDiagram: boolean;
 }
 
+// ✅ ADD THIS HELPER FUNCTION
+const formatAnalysis = (text: string): string[] => {
+  // Split by numbered lists (1., 2., etc.) or section breaks
+  const sections = text
+    .split(/(?=\d+\.\s+\*\*|\n\n)/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+  
+  return sections;
+};
+
+// ✅ ADD THIS HELPER TO RENDER TEXT WITH BOLD
+const renderTextWithBold = (text: string) => {
+  return text.split('**').map((part, i) => 
+    i % 2 === 1 ? (
+      <strong key={i} className="text-neutral-100 font-semibold">{part}</strong>
+    ) : (
+      part
+    )
+  );
+};
+
 export function ResultDisplay({ 
   result, 
   translatedContent, 
@@ -20,6 +42,11 @@ export function ResultDisplay({
   onToggleDiagram,
   showDiagram 
 }: ResultDisplayProps) {
+  // ✅ CHECK IF IT'S A FORMATTED ANALYSIS (video analysis)
+  const isFormattedAnalysis = translatedContent.summary.includes('**') || 
+                              translatedContent.summary.includes('1.') ||
+                              translatedContent.summary.includes('\n\n');
+
   return (
     <div className="flex items-start space-x-4">
       <div
@@ -40,7 +67,7 @@ export function ResultDisplay({
             result.isFake
               ? "text-red-400"
               : result.confidence === 0
-              ? "text-yellow-400"
+              ? "text-yellow-500/20 text-yellow-400"
               : "text-green-400"
           }`}
         >
@@ -66,10 +93,21 @@ export function ResultDisplay({
           </div>
         )}
 
+        {/* ✅ UPDATED SUMMARY SECTION */}
         <div className="mb-4">
-          <p className="text-neutral-300 text-sm leading-relaxed">
-            {translatedContent.summary}
-          </p>
+          {isFormattedAnalysis ? (
+            <div className="space-y-3">
+              {formatAnalysis(translatedContent.summary).map((section, idx) => (
+                <p key={idx} className="text-neutral-300 text-sm leading-relaxed">
+                  {renderTextWithBold(section)}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="text-neutral-300 text-sm leading-relaxed">
+              {translatedContent.summary}
+            </p>
+          )}
         </div>
 
         {translatedContent.reasons &&

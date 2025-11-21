@@ -41,4 +41,4 @@ export type TranslationCache = {
   };
 };
 
-export type InputType = "text" | "url" | "image";
+export type InputType = "text" | "url" | "image" | "video";
