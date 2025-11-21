@@ -18,7 +18,7 @@ export type AnalysisResult = {
       url: string;
       date: string;
     }>;
-  };
+  } | null;
 };
 
 export type VerificationStep = {
