@@ -94,26 +94,23 @@ export async function POST(request: Request) {
 
       console.log(`Uploading manual video (${mimeType})...`);
 
-      // 1. Upload to Gemini
-const buffer = Buffer.from(base64Data, 'base64');
-const blob = new Blob([buffer], { type: mimeType });
+         // 1. Upload to Gemini
+        const buffer = Buffer.from(base64Data, 'base64');
+        const blob = new Blob([buffer], { type: mimeType });
 
-// 2. Create a File object from the Blob
-const file = new File([blob], `video.${mimeType.split('/')[1]}`, { type: mimeType });
+        // 2. Create a File object from the Blob
+        const file = new File([blob], `video.${mimeType.split('/')[1]}`, { type: mimeType });
 
-// 3. Upload to Gemini
-const uploadResult = await withBackoff(() => 
-  ai.files.upload({
-    file: file,
-    config: {
-      mimeType: mimeType,
-    }
-  })
-);
-
-videoFileName = uploadResult.name;
-console.log(`File uploaded: ${uploadResult.uri}`);
-      
+        // 3. Upload to Gemini
+        const uploadResult = await withBackoff(() => 
+        ai.files.upload({
+            file: file,
+            config: {
+            mimeType: mimeType,
+            }
+        })
+        );
+            
       videoFileName = uploadResult.name;
       console.log(`File uploaded: ${uploadResult.uri}`);
 
