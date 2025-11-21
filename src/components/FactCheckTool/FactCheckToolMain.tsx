@@ -109,7 +109,6 @@ function FactCheckTool() {
     }
   };
 
-  // ...existing code...
   // Load from localStorage on mount (for web app)
   useEffect(() => {
     if (isExtension) return;
@@ -626,9 +625,10 @@ function FactCheckTool() {
               }
               className={cn(
                 "w-full py-3 px-6 rounded-lg font-medium transition-all duration-200",
-                "bg-gradient-to-r from-blue-500 to-blue-700",
-                "hover:from-blue-600 hover:to-blue-800",
-                "text-white",
+                "bg-gradient-to-b from-neutral-50 to-neutral-400 text-black",
+                "hover:from-neutral-100 hover:to-neutral-500",
+                "disabled:from-neutral-700 disabled:to-neutral-800",
+                "disabled:text-neutral-400",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 loading && "animate-pulse"
               )}

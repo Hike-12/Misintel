@@ -89,18 +89,12 @@ function Footer() {
         <div className="border-t border-white/10 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-neutral-400 text-sm mb-4 md:mb-0">
-              © 2025 MisIntel. Built with 🤍 for a more informed world.
+              © 2025 MisIntel.
             </div>
             <div className="flex space-x-6 text-sm">
-              <a href="#" className="text-neutral-400 hover:text-neutral-100 transition-colors duration-200">
-                Privacy Policy
-              </a>
-              <a href="#" className="text-neutral-400 hover:text-neutral-100 transition-colors duration-200">
-                Terms of Service
-              </a>
-              <a href="#" className="text-neutral-400 hover:text-neutral-100 transition-colors duration-200">
-                API Docs
-              </a>
+              <p className="text-neutral-400 hover:text-neutral-100 transition-colors duration-200">
+                Crafted By Team T-REX
+              </p>
             </div>
           </div>
         </div>

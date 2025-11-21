@@ -1,6 +1,7 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import PixelTransition from '@/components/PixelTransition'
+import { AwardBadge } from '@/components/ui/award-badge'
 
 export default function HeroSection() {
     const handleFactCheckingClick = (e?: React.MouseEvent) => {
@@ -13,7 +14,6 @@ export default function HeroSection() {
         }
     };
 
-    // Common class for the silver gradient text
     const silverGradientText = "bg-gradient-to-b from-neutral-50 to-neutral-400 bg-clip-text text-transparent";
 
     return (
@@ -28,8 +28,11 @@ export default function HeroSection() {
                 </div>
 
                 <section className="mt-12 md:mt-20 bg-muted/50 dark:bg-background overflow-hidden">
-                    <div className="relative mx-auto max-w-5xl px-6 pt-28 lg:pt-24">
+                    <div className="relative mx-auto max-w-5xl px-6 pt-28 lg:pt-0">
                         <div className="relative z-10 mx-auto text-center">
+                            <div className="flex flex-wrap justify-center gap-4 mb-8">
+                                <AwardBadge link="https://ai.google.dev/" />
+                            </div>
                             <h1 className="text-balance text-4xl font-semibold md:text-5xl lg:text-6xl bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400 pb-2">
                                 Verify anything with MisIntel
                             </h1>
@@ -47,67 +50,36 @@ export default function HeroSection() {
                         </div>
                     </div>
 
-                    <div className="mx-auto max-w-7xl mb-12 md:mb-20 flex justify-center px-6">
+                    <div className="mx-auto max-w-6xl mb-12 md:mb-20 flex justify-center px-6">
                         <PixelTransition
                             firstContent={
                                 <img
                                     src="/trump-tweet.jpg"
                                     alt="Social media post example"
-                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                    className="w-full h-full object-contain rounded-lg"
                                 />
                             }
                             secondContent={
-                                <div
-                                    style={{
-                                        width: "100%",
-                                        height: "100%",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        backgroundColor: "black", /* CHANGED: Set to solid black */
-                                        padding: "2rem"
-                                    }}
-                                >
-                                    <div style={{ textAlign: "center", maxWidth: "90%" }}>
-                                        <p className={silverGradientText} style={{ 
-                                            fontWeight: 900, 
-                                            fontSize: "2rem", 
-                                            marginBottom: "1rem",
-                                            lineHeight: "1.2"
-                                        }}>
-                                            SIKE! This was Fake
-                                        </p>
-                                        <p className={silverGradientText} style={{ 
-                                            fontWeight: 600, 
-                                            fontSize: "1.1rem", 
-                                            marginBottom: "0.75rem",
-                                            lineHeight: "1.4"
-                                        }}>
+                                <div className="w-full h-full flex items-center justify-center bg-black p-8 rounded-lg">
+                                    <div className="text-center max-w-[90%]">
+                                        <h1 className={`${silverGradientText} font-extrabold text-2xl mb-6 leading-tight`}>
+                                            Sike! This was Fake.
+                                        </h1>
+                                        <p className={`${silverGradientText} font-semibold text-lg mb-6 leading-snug`}>
                                             Fake headline sends Wall Street into US$2.4 trillion whiplash
                                         </p>
-                                        <p className={silverGradientText} style={{ 
-                                            fontWeight: 400, 
-                                            fontSize: "0.95rem", 
-                                            lineHeight: "1.5"
-                                        }}>
+                                        <p className={`${silverGradientText} font-normal text-base leading-relaxed`}>
                                             Don't believe everything you see online. Always verify first.
                                         </p>
                                     </div>
                                 </div>
                             }
                             gridSize={14}
-                            pixelColor='#e5e5e5'
+                            pixelColor="#e5e5e5"
                             once={false}
                             animationStepDuration={0.5}
-                            className="w-full max-w-lg"
-                            style={{ 
-                                width: '100%', 
-                                maxWidth: '600px',
-                                backgroundColor: 'transparent',
-                                border: '2px solid rgba(229, 229, 229, 0.2)',
-                                borderRadius: '20px'
-                            }}
-                            aspectRatio="65%"
+                            className="w-full max-w-5xl min-h-[520px] aspect-[16/7] bg-transparent border-2 border-white/10 rounded-2xl"
+                            aspectRatio="16/7"
                         />
                     </div>
                 </section>

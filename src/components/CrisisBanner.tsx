@@ -12,7 +12,7 @@ interface CrisisEvent {
 
 // Manual Crisis Configuration - Change these values as needed
 const MANUAL_CRISIS_CONFIG: CrisisEvent = {
-  active: true, // Set to true to enable crisis banner
+  active: false, // Set to true to enable crisis banner
   type: 'disaster',
   severity: 'critical', // Change severity: 'low' | 'medium' | 'high' | 'critical'
   message: 'There is an ongoing crisis. Please verify information carefully before sharing.',
