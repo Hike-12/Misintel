@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useRef, useEffect, useState, CSSProperties } from 'react';
 import { gsap } from 'gsap';
 
@@ -30,11 +32,22 @@ const PixelTransition: React.FC<PixelTransitionProps> = ({
   const delayedCallRef = useRef<gsap.core.Tween | null>(null);
 
   const [isActive, setIsActive] = useState<boolean>(false);
+  const [isTouchDevice, setIsTouchDevice] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
 
-  const isTouchDevice =
-    'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+  // Detect if touch device - only on client
+  useEffect(() => {
+    setIsMounted(true);
+    setIsTouchDevice(
+      'ontouchstart' in window || 
+      navigator.maxTouchPoints > 0 || 
+      window.matchMedia('(pointer: coarse)').matches
+    );
+  }, []);
 
   useEffect(() => {
+    if (!isMounted) return;
+    
     const pixelGridEl = pixelGridRef.current;
     if (!pixelGridEl) return;
 
@@ -56,9 +69,11 @@ const PixelTransition: React.FC<PixelTransitionProps> = ({
         pixelGridEl.appendChild(pixel);
       }
     }
-  }, [gridSize, pixelColor]);
+  }, [gridSize, pixelColor, isMounted]);
 
   const animatePixels = (activate: boolean): void => {
+    if (!isMounted) return;
+    
     setIsActive(activate);
 
     const pixelGridEl = pixelGridRef.current;
@@ -106,13 +121,16 @@ const PixelTransition: React.FC<PixelTransitionProps> = ({
   const handleEnter = (): void => {
     if (!isActive) animatePixels(true);
   };
+  
   const handleLeave = (): void => {
     if (isActive && !once) animatePixels(false);
   };
+  
   const handleClick = (): void => {
     if (!isActive) animatePixels(true);
     else if (isActive && !once) animatePixels(false);
   };
+
   return (
     <div
       ref={containerRef}
