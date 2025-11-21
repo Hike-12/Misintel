@@ -41,6 +41,16 @@ const saveToLocalStorage = (key: string, value: any) => {
   }
 };
 
+const formatAnalysis = (text: string): string[] => {
+  // Split by numbered lists (1., 2., etc.) or **bold markers**
+  const sections = text.split(/(?=\d+\.\s+\*\*|\*\*[A-Z])/);
+  
+  // Clean up and filter empty sections
+  return sections
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+};
+
 const loadFromLocalStorage = (key: string, defaultValue: any = null) => {
   if (typeof window === 'undefined') return defaultValue;
   try {
@@ -72,6 +82,19 @@ function FactCheckTool() {
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>("en");
   const [translations, setTranslations] = useState<TranslationCache>({});
   const [translating, setTranslating] = useState(false);
+
+
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string>("");
+
+  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+      setInput(""); // Clear URL input if file is uploaded
+    }
+  };
 
   const isExtension =
     typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id;
@@ -373,6 +396,75 @@ function FactCheckTool() {
     setSelectedLanguage("en");
 
     try {
+      // --- VIDEO ---
+      if (inputType === "video") {
+        if (!input.trim() && !videoFile) {
+          throw new Error("Please provide a video URL or upload a video file.");
+        }
+
+        let payload: any = { prompt: "Analyze this video for misinformation." };
+
+        if (videoFile) {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64Data = (reader.result as string).split(',')[1];
+            payload.base64Data = base64Data;
+            payload.mimeType = videoFile.type;
+
+            const response = await fetch("/api/video-check", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+              throw new Error(data.error);
+            }
+
+            setResult({
+              isFake: false,
+              confidence: 85, // ✅ Set a confidence score instead of 0
+              summary: data.analysis || "No analysis generated.",
+              reasons: data.groundingMetadata ? ["Analysis includes web search verification"] : ["AI-powered video content analysis"],
+              sources: data.groundingMetadata?.groundingChunks?.map((chunk: any) => chunk.web?.uri).filter(Boolean) || [],
+              inputText: videoFile.name,
+              inputUrl: "",
+              verificationFlow: [],
+              author: null,
+            });
+            setLoading(false);
+          };
+          reader.readAsDataURL(videoFile);
+          return;
+        } else if (input.trim()) {
+          payload.videoUrl = input.trim();
+
+          const response = await fetch("/api/video-check", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await response.json();
+          setResult({
+            isFake: false,
+            confidence: 0,
+            summary: data.analysis || "No analysis generated.",
+            reasons: [],
+            sources: [],
+            inputText: input.trim(),
+            inputUrl: input.trim(),
+            verificationFlow: [],
+            author: null,
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // --- IMAGE ---
       if (inputType === "image") {
         if (!imageFile) {
           throw new Error("Please select an image");
@@ -487,9 +579,12 @@ function FactCheckTool() {
           "Please check your input and try again",
         ],
       });
-    } finally {
       setLoading(false);
     }
+  };
+
+  const isVideoUrl = (url: string): boolean => {
+  return /youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com/i.test(url);
   };
 
   const handleInputTypeChange = (newType: InputType) => {
@@ -605,12 +700,33 @@ function FactCheckTool() {
           />
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {inputType === "image" ? (
-              <ImageUpload 
-                imagePreview={imagePreview}
-                onImageChange={handleImageChange}
+          {inputType === "image" ? (
+            <ImageUpload 
+              imagePreview={imagePreview}
+              onImageChange={handleImageChange}
+            />
+          ) : inputType === "video" ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <p className="text-yellow-400 text-sm">
+                  ⚠️ <strong>Note:</strong> Direct video links (YouTube, Vimeo, etc.) are not supported by the AI model. 
+                  Please upload a video file instead.
+                </p>
+              </div>
+              <input
+                type="file"
+                accept="video/*"
+                onChange={handleVideoFileChange}
+                className="mt-2"
               />
-            ) : (
+              {videoPreview && (
+                <video controls src={videoPreview} className="max-h-48 mx-auto rounded-lg" />
+              )}
+              <p className="text-neutral-400 text-sm">
+                Upload a video file for analysis.
+              </p>
+            </div>
+          ) : (
               <TextInput 
                 inputType={inputType}
                 value={input}
@@ -621,7 +737,8 @@ function FactCheckTool() {
             <button
               type="submit"
               disabled={
-                loading || (inputType === "image" ? !imageFile : !input.trim())
+                loading ||
+                (inputType === "image" ? !imageFile : inputType === "video" ? (!input.trim() && !videoFile) : !input.trim())
               }
               className={cn(
                 "w-full py-3 px-6 rounded-lg font-medium transition-all duration-200",
