@@ -1,6 +1,7 @@
 // src/components/FactCheckTool/AudioInput.tsx
 import { Mic, Square, Upload } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { cn } from '@/utils/cn';
 
 interface AudioInputProps {
   onAudioCapture: (audioBlob: Blob, isRecorded: boolean) => void;
@@ -20,7 +21,7 @@ export function AudioInput({ onAudioCapture }: AudioInputProps) {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 16000
+          sampleRate: 48000
         } 
       });
       
@@ -96,7 +97,11 @@ export function AudioInput({ onAudioCapture }: AudioInputProps) {
           <button
             type="button"
             onClick={startRecording}
-            className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+            className={cn(
+              "flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200",
+              "bg-gradient-to-b from-neutral-50 to-neutral-400 text-black",
+              "hover:from-neutral-100 hover:to-neutral-500"
+            )}
           >
             <Mic className="w-5 h-5" />
             Start Recording
@@ -105,7 +110,12 @@ export function AudioInput({ onAudioCapture }: AudioInputProps) {
           <button
             type="button"
             onClick={stopRecording}
-            className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors animate-pulse"
+            className={cn(
+              "flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200",
+              "bg-gradient-to-b from-neutral-50 to-neutral-400 text-black",
+              "hover:from-neutral-100 hover:to-neutral-500",
+              "animate-pulse"
+            )}
           >
             <Square className="w-5 h-5" />
             Stop Recording ({formatTime(recordingTime)})
@@ -121,7 +131,7 @@ export function AudioInput({ onAudioCapture }: AudioInputProps) {
       </div>
 
       {/* File Upload */}
-      <div className="border-2 border-dashed border-neutral-700 rounded-lg p-6 text-center hover:border-neutral-500 transition-colors">
+      <div className="border-2 border-dashed border-neutral-700 rounded-lg p-6 text-center hover:border-neutral-500 transition-colors cursor-pointer">
         <input
           type="file"
           accept="audio/*"
@@ -132,7 +142,10 @@ export function AudioInput({ onAudioCapture }: AudioInputProps) {
         />
         <label 
           htmlFor="audio-upload" 
-          className={`cursor-pointer ${isRecording ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={cn(
+            "cursor-pointer",
+            isRecording && "opacity-50 cursor-not-allowed"
+          )}
         >
           <div className="space-y-2">
             <Upload className="w-8 h-8 mx-auto text-neutral-400" />
@@ -151,10 +164,9 @@ export function AudioInput({ onAudioCapture }: AudioInputProps) {
           <audio 
             controls 
             src={audioURL} 
-            className="w-full"
+            className="w-full rounded-lg"
             style={{
-              filter: 'invert(1) hue-rotate(180deg)',
-              borderRadius: '8px'
+              filter: 'invert(0.9) hue-rotate(180deg)',
             }}
           />
         </div>
