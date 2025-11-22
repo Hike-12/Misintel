@@ -26,18 +26,35 @@ export async function POST(req: NextRequest) {
     });
 
     // Determine encoding from file type
-    const encoding = getAudioEncoding(audioFile.type);
-    
-    console.log('🔊 Audio encoding:', encoding);
+const encoding = getAudioEncoding(audioFile.type);
 
-    // Configure speech recognition
-    const audio = {
-      content: audioBuffer.toString('base64'),
-    };
+console.log('🔊 Audio encoding:', encoding);
+console.log('📄 File name:', audioFile.name);
 
-    const config = {
+// Special handling for Opus files (WhatsApp audio)
+let sampleRateHertz;
+if (encoding === 'OGG_OPUS' || audioFile.name.endsWith('.opus')) {
+  // Opus files from WhatsApp typically use 16000 Hz
+  sampleRateHertz = 16000;
+  console.log('🎤 Detected Opus file, using 16000 Hz');
+} else if (encoding === 'WEBM_OPUS') {
+  // WebM from browser recording uses 48000 Hz
+  sampleRateHertz = 48000;
+  console.log('🌐 Detected WebM recording, using 48000 Hz');
+} else {
+  // For other formats, let API auto-detect
+  sampleRateHertz = undefined;
+  console.log('🔧 Auto-detecting sample rate');
+}
+
+// Configure speech recognition
+const audio = {
+  content: audioBuffer.toString('base64'),
+};
+
+const config = {
   encoding: encoding,
-  // Don't specify sampleRateHertz - let API auto-detect from audio file
+  sampleRateHertz: sampleRateHertz,
   languageCode: 'en-US',
   alternativeLanguageCodes: ['hi-IN', 'ta-IN', 'te-IN', 'mr-IN'],
   enableAutomaticPunctuation: true,
@@ -106,12 +123,18 @@ export async function POST(req: NextRequest) {
 }
 
 function getAudioEncoding(mimeType: string): any {
+  // Log for debugging
+  console.log('🔍 Detecting encoding for MIME type:', mimeType);
+  
   const encodingMap: { [key: string]: string } = {
     'audio/wav': 'LINEAR16',
     'audio/wave': 'LINEAR16',
     'audio/x-wav': 'LINEAR16',
     'audio/webm': 'WEBM_OPUS',
+    'audio/webm;codecs=opus': 'WEBM_OPUS',
     'audio/ogg': 'OGG_OPUS',
+    'audio/ogg;codecs=opus': 'OGG_OPUS',
+    'audio/opus': 'OGG_OPUS', // ADD THIS
     'audio/mp3': 'MP3',
     'audio/mpeg': 'MP3',
     'audio/mp4': 'MP3',
@@ -119,5 +142,14 @@ function getAudioEncoding(mimeType: string): any {
     'audio/x-flac': 'FLAC',
   };
 
-  return encodingMap[mimeType] || 'LINEAR16';
+  const encoding = encodingMap[mimeType.toLowerCase()];
+  
+  if (encoding) {
+    console.log('✅ Detected encoding:', encoding);
+    return encoding;
+  }
+  
+  // Fallback: check file extension if mime type not recognized
+  console.log('⚠️ Unknown MIME type, using LINEAR16 as fallback');
+  return 'LINEAR16';
 }
