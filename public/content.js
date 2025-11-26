@@ -352,7 +352,7 @@
       console.log('Misintel: Page URL:', url);
       
       // Send to backend for analysis
-      const response = await fetch('http://localhost:3000/api/scan-page', {
+      const response = await fetch(`${import.meta.env.NEXT_PUBLIC_API_URL}/scan-page`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, url, title }),
