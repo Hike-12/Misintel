@@ -1,3 +1,4 @@
+// src/components/FactCheckTool/FactCheckToolMain.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -19,6 +20,7 @@ import { LanguageSelector } from './LanguageSelector';
 import { ResultDisplay } from './ResultDisplay';
 import { VerificationFlowDiagram } from './VerificationFlowDiagram';
 import { HistoryList } from './HistoryList';
+import { AudioInput } from './AudioInput';
 import { isValidUrl, buildVerificationFlow } from './utils';
 import { generateFlowNodes } from './flowNodeGenerator';
 
@@ -30,7 +32,6 @@ const chrome =
 
 const HISTORY_STORAGE_KEY = 'misintel_history';
 
-// Helper functions for localStorage with error handling
 const saveToLocalStorage = (key: string, value: any) => {
   if (typeof window === 'undefined') return;
   try {
@@ -39,16 +40,6 @@ const saveToLocalStorage = (key: string, value: any) => {
   } catch (error) {
     console.error(`Failed to save ${key}:`, error);
   }
-};
-
-const formatAnalysis = (text: string): string[] => {
-  // Split by numbered lists (1., 2., etc.) or **bold markers**
-  const sections = text.split(/(?=\d+\.\s+\*\*|\*\*[A-Z])/);
-  
-  // Clean up and filter empty sections
-  return sections
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
 };
 
 const loadFromLocalStorage = (key: string, defaultValue: any = null) => {
@@ -83,23 +74,18 @@ function FactCheckTool() {
   const [translations, setTranslations] = useState<TranslationCache>({});
   const [translating, setTranslating] = useState(false);
 
-
+  // Video states
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string>("");
 
-  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setVideoFile(file);
-      setVideoPreview(URL.createObjectURL(file));
-      setInput(""); // Clear URL input if file is uploaded
-    }
-  };
+  // Audio states
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioPreview, setAudioPreview] = useState<string>("");
 
   const isExtension =
     typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id;
 
-  // Load history from localStorage on mount - ONLY ONCE
+  // Load history from localStorage on mount
   useEffect(() => {
     if (historyLoaded) return;
     
@@ -111,19 +97,17 @@ function FactCheckTool() {
     setHistoryLoaded(true);
   }, [historyLoaded]);
 
-  // Save history to localStorage whenever it changes - BUT ONLY AFTER LOADED
+  // Save history to localStorage whenever it changes
   useEffect(() => {
-    if (!historyLoaded) return; // Don't save until we've loaded first
+    if (!historyLoaded) return;
     saveToLocalStorage(HISTORY_STORAGE_KEY, history);
   }, [history, historyLoaded]);
 
-  // Clear single history item
   const clearHistoryItem = (index: number) => {
     setHistory(prev => prev.filter((_, i) => i !== index));
     console.log(`🗑️ Cleared history item at index ${index}`);
   };
 
-  // Clear all history
   const clearAllHistory = () => {
     if (window.confirm('Are you sure you want to clear all history?')) {
       setHistory([]);
@@ -132,7 +116,6 @@ function FactCheckTool() {
     }
   };
 
-  // ...existing code...
   // Load from localStorage on mount (for web app)
   useEffect(() => {
     if (isExtension) return;
@@ -387,6 +370,21 @@ function FactCheckTool() {
     }
   };
 
+  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+      setInput("");
+    }
+  };
+
+  const handleAudioCapture = (blob: Blob, isRecorded: boolean) => {
+    setAudioBlob(blob);
+    setAudioPreview(URL.createObjectURL(blob));
+    console.log(isRecorded ? '🎤 Audio recorded' : '📁 Audio file uploaded');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -397,7 +395,106 @@ function FactCheckTool() {
     setSelectedLanguage("en");
 
     try {
-      // --- VIDEO ---
+      // ===== AUDIO HANDLING =====
+      if (inputType === "audio") {
+        if (!audioBlob) {
+          throw new Error("Please record or upload audio");
+        }
+
+        console.log('🎤 Step 1: Converting audio to text...');
+
+        // Step 1: Convert audio to text
+        const audioFormData = new FormData();
+        audioFormData.append('audio', audioBlob, 'recording.webm');
+
+        const speechResponse = await fetch('/api/speech-to-text', {
+          method: 'POST',
+          body: audioFormData
+        });
+
+        const speechData = await speechResponse.json();
+
+        if (!speechData.success || !speechData.transcript) {
+          throw new Error(speechData.error || 'Failed to transcribe audio. Please try again.');
+        }
+
+        console.log('✅ Transcript:', speechData.transcript);
+        console.log('🔍 Step 2: Fact-checking transcript...');
+
+        // Step 2: Fact-check the transcript
+        const factCheckFormData = new FormData();
+        factCheckFormData.append('type', 'text');
+        factCheckFormData.append('input', speechData.transcript);
+
+        const apiBase = isExtension
+          ? "http://localhost:3000"
+          : process.env.NEXT_PUBLIC_API_URL || "";
+
+        const response = await fetch(`${apiBase}/api/advanced-check`, {
+          method: 'POST',
+          body: factCheckFormData
+        });
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            setResult({
+              isFake: false,
+              confidence: 0,
+              summary: "Too many requests. Please wait a minute before trying again.",
+              reasons: [
+                "You have hit the rate limit for analysis.",
+                "This helps prevent spam and keeps the service fast for everyone."
+              ]
+            });
+            setLoading(false);
+            return;
+          }
+          throw new Error(`Fact-check failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Step 3: Build verification flow
+        const verificationFlow = buildVerificationFlow(data, speechData.transcript);
+        const englishFlow = verificationFlow.map((step) => ({
+          label: step.label,
+          details: step.details,
+        }));
+        const { nodes: flowNodes, edges: flowEdges } = generateFlowNodes(
+          verificationFlow,
+          englishFlow
+        );
+
+        setNodes(flowNodes);
+        setEdges(flowEdges);
+
+        // Step 4: Set result
+        const newResult: AnalysisResult = {
+          isFake: Boolean(data.isFake),
+          confidence: Number(data.confidence) || 0,
+          summary: String(data.summary || 'Analysis complete'),
+          reasons: Array.isArray(data.reasons) ? data.reasons : [],
+          sources: Array.isArray(data.sources) ? data.sources : [],
+          factCheckResults: data.factCheckResults || [],
+          safetyCheck: data.safetyCheck || null,
+          inputText: `🎤 Transcribed: "${speechData.transcript}"`,
+          inputUrl: undefined,
+          verificationFlow,
+          author: data.author || null
+        };
+
+        setResult(newResult);
+        setHistory((prev) => [newResult, ...prev.slice(0, 9)]);
+
+        if (newResult.confidence > 0) {
+          setTimeout(() => fetchTranslations(), 500);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      // ===== VIDEO HANDLING =====
       if (inputType === "video") {
         if (!input.trim() && !videoFile) {
           throw new Error("Please provide a video URL or upload a video file.");
@@ -426,7 +523,7 @@ function FactCheckTool() {
 
             setResult({
               isFake: false,
-              confidence: 85, // ✅ Set a confidence score instead of 0
+              confidence: 85,
               summary: data.analysis || "No analysis generated.",
               reasons: data.groundingMetadata ? ["Analysis includes web search verification"] : ["AI-powered video content analysis"],
               sources: data.groundingMetadata?.groundingChunks?.map((chunk: any) => chunk.web?.uri).filter(Boolean) || [],
@@ -465,12 +562,12 @@ function FactCheckTool() {
         }
       }
 
-      // --- IMAGE ---
+      // ===== IMAGE HANDLING =====
       if (inputType === "image") {
         if (!imageFile) {
           throw new Error("Please select an image");
         }
-      } else {
+      } else if (inputType === "text" || inputType === "url") {
         if (!input.trim()) {
           throw new Error(
             inputType === "url"
@@ -580,12 +677,9 @@ function FactCheckTool() {
           "Please check your input and try again",
         ],
       });
+    } finally {
       setLoading(false);
     }
-  };
-
-  const isVideoUrl = (url: string): boolean => {
-  return /youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com/i.test(url);
   };
 
   const handleInputTypeChange = (newType: InputType) => {
@@ -597,6 +691,10 @@ function FactCheckTool() {
     setSelectedLanguage("en");
     setImageFile(null);
     setImagePreview("");
+    setVideoFile(null);
+    setVideoPreview("");
+    setAudioBlob(null);
+    setAudioPreview("");
   };
 
   const shareResults = async () => {
@@ -682,7 +780,7 @@ function FactCheckTool() {
             AI-Powered Fact Checker
           </h2>
           <p className="text-neutral-400 text-lg max-w-2xl mx-auto">
-            Enter text or URL to verify its authenticity using multiple AI
+            Enter text, URL, image, video, or audio to verify its authenticity using multiple AI
             models and fact-checking sources.
           </p>
         </div>
@@ -701,33 +799,32 @@ function FactCheckTool() {
           />
 
           <form onSubmit={handleSubmit} className="space-y-6">
-          {inputType === "image" ? (
-            <ImageUpload 
-              imagePreview={imagePreview}
-              onImageChange={handleImageChange}
-            />
-          ) : inputType === "video" ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                <p className="text-yellow-400 text-sm">
-                  ⚠️ <strong>Note:</strong> Direct video links (YouTube, Vimeo, etc.) are not supported by the AI model. 
-                  Please upload a video file instead.
-                </p>
-              </div>
-              <input
-                type="file"
-                accept="video/*"
-                onChange={handleVideoFileChange}
-                className="mt-2"
+            {inputType === "image" ? (
+              <ImageUpload 
+                imagePreview={imagePreview}
+                onImageChange={handleImageChange}
               />
-              {videoPreview && (
-                <video controls src={videoPreview} className="max-h-48 mx-auto rounded-lg" />
-              )}
-              <p className="text-neutral-400 text-sm">
-                Upload a video file for analysis.
-              </p>
-            </div>
-          ) : (
+            ) : inputType === "video" ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-yellow-400 text-sm">
+                    ⚠️ <strong>Note:</strong> Direct video links (YouTube, Vimeo, etc.) are not supported. 
+                    Please upload a video file instead.
+                  </p>
+                </div>
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoFileChange}
+                  className="mt-2"
+                />
+                {videoPreview && (
+                  <video controls src={videoPreview} className="max-h-48 mx-auto rounded-lg" />
+                )}
+              </div>
+            ) : inputType === "audio" ? (
+              <AudioInput onAudioCapture={handleAudioCapture} />
+            ) : (
               <TextInput 
                 inputType={inputType}
                 value={input}
@@ -739,13 +836,17 @@ function FactCheckTool() {
               type="submit"
               disabled={
                 loading ||
-                (inputType === "image" ? !imageFile : inputType === "video" ? (!input.trim() && !videoFile) : !input.trim())
+                (inputType === "image" ? !imageFile : 
+                 inputType === "video" ? (!input.trim() && !videoFile) :
+                 inputType === "audio" ? !audioBlob :
+                 !input.trim())
               }
               className={cn(
                 "w-full py-3 px-6 rounded-lg font-medium transition-all duration-200",
-                "bg-gradient-to-r from-blue-500 to-blue-700",
-                "hover:from-blue-600 hover:to-blue-800",
-                "text-white",
+                "bg-gradient-to-b from-neutral-50 to-neutral-400 text-black",
+                "hover:from-neutral-100 hover:to-neutral-500",
+                "disabled:from-neutral-700 disabled:to-neutral-800",
+                "disabled:text-neutral-400",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 loading && "animate-pulse"
               )}

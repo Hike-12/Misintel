@@ -1,3 +1,4 @@
+// src/components/FactCheckTool/InputTypeSelector.tsx
 import { InputType } from './types';
 
 interface InputTypeSelectorProps {
@@ -7,8 +8,8 @@ interface InputTypeSelectorProps {
 
 export function InputTypeSelector({ inputType, onInputTypeChange }: InputTypeSelectorProps) {
   return (
-    <div className="flex gap-3 mb-6 justify-center">
-      {(["text", "url", "image", "video"] as const).map((type) => (
+    <div className="flex gap-3 mb-6 justify-center flex-wrap">
+      {(["text", "url", "image", "video", "audio"] as const).map((type) => (
         <button
           key={type}
           onClick={() => onInputTypeChange(type)}
@@ -18,7 +19,11 @@ export function InputTypeSelector({ inputType, onInputTypeChange }: InputTypeSel
               : "bg-transparent text-neutral-400 border-neutral-700 hover:border-neutral-500 hover:text-neutral-200"
           }`}
         >
-          {type.charAt(0).toUpperCase() + type.slice(1)}
+          {type === "audio" ? " Audio" : 
+           type === "video" ? " Video" :
+           type === "image" ? " Image" :
+           type === "url" ? " URL" : 
+           " " + type.charAt(0).toUpperCase() + type.slice(1)}
         </button>
       ))}
     </div>

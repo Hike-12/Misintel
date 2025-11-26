@@ -18,7 +18,7 @@ export type AnalysisResult = {
       url: string;
       date: string;
     }>;
-  };
+  } | null;
 };
 
 export type VerificationStep = {
@@ -41,4 +41,5 @@ export type TranslationCache = {
   };
 };
 
-export type InputType = "text" | "url" | "image" | "video";
+
+export type InputType = "text" | "url" | "image" | "video" | "audio";
