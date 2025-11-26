@@ -433,7 +433,7 @@ function FactCheckTool() {
               inputText: videoFile.name,
               inputUrl: "",
               verificationFlow: [],
-              author: null,
+              author: undefined,
             });
             setLoading(false);
           };
@@ -458,7 +458,7 @@ function FactCheckTool() {
             inputText: input.trim(),
             inputUrl: input.trim(),
             verificationFlow: [],
-            author: null,
+            author: undefined,
           });
           setLoading(false);
           return;

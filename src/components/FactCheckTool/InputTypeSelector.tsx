@@ -5,7 +5,7 @@ interface InputTypeSelectorProps {
   onInputTypeChange: (type: InputType) => void;
 }
 
-export function InputTypeSelector({ inputType, onInputTypeChange }) {
+export function InputTypeSelector({ inputType, onInputTypeChange }: InputTypeSelectorProps) {
   return (
     <div className="flex gap-3 mb-6 justify-center">
       {(["text", "url", "image", "video"] as const).map((type) => (
