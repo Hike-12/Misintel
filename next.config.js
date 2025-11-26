@@ -1,6 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  // REQUIRED for Cloud Run deployment
+  output: 'standalone',
+  
+  // Recommended optimizations
+  compress: true,
+  swcMinify: true,
+  poweredByHeader: false,
+  
+  // Image optimization
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
 };
 
 module.exports = nextConfig;
