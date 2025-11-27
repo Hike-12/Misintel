@@ -53,8 +53,8 @@ function FeaturedStats() {
           <GridItem
             area="md:[grid-area:1/1/2/7] xl:[grid-area:1/1/2/5]"
             icon={<Target className="h-4 w-4 text-black dark:text-neutral-400" />}
-            title="99.2% Accuracy"
-            description="Industry-leading accuracy in detecting misinformation across text, images, and URLs."
+            title="Smart Misinformation Scanner"
+            description="Quickly identifies misleading claims using intelligent cross-analysis."
             slim={false}
           />
 
@@ -62,8 +62,8 @@ function FeaturedStats() {
           <GridItem
             area="md:[grid-area:2/1/3/7] xl:[grid-area:2/1/3/5]"
             icon={<Search className="h-4 w-4 text-black dark:text-neutral-400" />}
-            title="Multi-Source Verification"
-            description="Combines 4 powerful APIs for comprehensive content analysis."
+            title="Unified Intelligence Layer"
+            description="Combines insights from several industry-grade APIs into one powerful assessment pipeline."
             slim={false}
           />
 
