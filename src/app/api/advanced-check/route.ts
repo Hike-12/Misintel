@@ -477,30 +477,56 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const formData = await req.formData();
-    const type = (formData.get("type") as string) || "";
-    const input = (formData.get("input") as string) || "";
-    const forceFresh = formData.get("forceFresh") === "true";
+    const contentType = req.headers.get("content-type") || "";
+    
+    let inputType = "text";
+    let inputText = "";
+    let urlToCheck = "";
+    let imageData: string | undefined;
+    let mimeType: string | undefined;
+    let forceFresh = false;
+
+    if (contentType.includes("application/json")) {
+      // Handle JSON requests (from WhatsApp bot)
+      const body = await req.json();
+      inputType = body.type || "text";
+      inputText = body.input || body.text || "";
+      urlToCheck = body.url || "";
+      imageData = body.imageData;
+      mimeType = body.mimeType;
+      forceFresh = body.forceFresh === true || body.forceFresh === "true";
+    } else {
+      // Handle FormData requests (from web UI)
+      const formData = await req.formData();
+      inputType = (formData.get("type") as string) || "text";
+      inputText = (formData.get("input") as string) || (formData.get("text") as string) || "";
+      urlToCheck = (formData.get("url") as string) || "";
+      forceFresh = formData.get("forceFresh") === "true";
+      
+      const imageFile = formData.get("image") as File;
+      if (imageFile) {
+        const buffer = Buffer.from(await imageFile.arrayBuffer());
+        imageData = buffer.toString("base64");
+        mimeType = imageFile.type;
+      }
+    }
+
+    const type = inputType;
+    const input = inputText;
 
     let contentToAnalyze = "";
-    let urlToCheck = "";
 
     // Handle different input types
     if (type === "image") {
-      const file = formData.get("image") as File;
-      if (!file) {
-        return buildMissingInputResponse("No image file provided");
+      if (!imageData || !mimeType) {
+        return buildMissingInputResponse("No image data provided");
       }
 
       try {
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        const base64 = buffer.toString("base64");
-
         console.log("🔍 Starting OCR processing...");
 
         const ocrFormData = new FormData();
-        ocrFormData.append("base64Image", `data:${file.type};base64,${base64}`);
+        ocrFormData.append("base64Image", `data:${mimeType};base64,${imageData}`);
         ocrFormData.append("apikey", "helloworld");
         ocrFormData.append("language", "eng");
         ocrFormData.append("isOverlayRequired", "false");

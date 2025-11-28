@@ -1,79 +1,206 @@
-// src/app/api/speech-to-text/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { SpeechClient } from '@google-cloud/speech';
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const audioFile = formData.get('audio') as File;
+    const contentType = req.headers.get('content-type') || '';
+    console.log('[SPEECH-TO-TEXT] Request content-type:', contentType);
+    
+    let audioBuffer: Buffer;
+    let mimeType: string;
 
-    if (!audioFile) {
-      return NextResponse.json(
-        { error: 'No audio file provided' },
-        { status: 400 }
-      );
+    // Handle JSON requests (from WhatsApp)
+    if (contentType.includes('application/json')) {
+      const body = await req.json();
+      
+      if (!body.audioData) {
+        console.error('[SPEECH-TO-TEXT] No audio data in request body');
+        return NextResponse.json(
+          { success: false, error: 'No audio data provided', transcript: '' },
+          { status: 400 }
+        );
+      }
+
+      // Decode base64 audio
+      audioBuffer = Buffer.from(body.audioData, 'base64');
+      mimeType = body.mimeType || 'audio/ogg';
+      
+      console.log('[SPEECH-TO-TEXT] Received from WhatsApp:');
+      console.log('  - MIME type:', mimeType);
+      console.log('  - Buffer size:', audioBuffer.length, 'bytes');
+      console.log('  - First 20 bytes (hex):', audioBuffer.slice(0, 20).toString('hex'));
+    } 
+    // Handle FormData requests (from web UI)
+    else {
+      const formData = await req.formData();
+      const audioFile = formData.get('audio') as File;
+
+      if (!audioFile) {
+        console.error('[SPEECH-TO-TEXT] No audio file in FormData');
+        return NextResponse.json(
+          { success: false, error: 'No audio file provided', transcript: '' },
+          { status: 400 }
+        );
+      }
+
+      const bytes = await audioFile.arrayBuffer();
+      audioBuffer = Buffer.from(bytes);
+      mimeType = audioFile.type;
+      
+      console.log('[SPEECH-TO-TEXT] Received from Web UI:');
+      console.log('  - File name:', audioFile.name);
+      console.log('  - MIME type:', mimeType);
+      console.log('  - Buffer size:', audioBuffer.length, 'bytes');
+      console.log('  - First 20 bytes (hex):', audioBuffer.slice(0, 20).toString('hex'));
     }
 
-    console.log('🎤 Processing audio file:', audioFile.name, audioFile.type);
+    // Get API key
+    const apiKey = process.env.GOOGLE_CLOUD_API_KEY;
 
-    // Convert file to buffer
-    const bytes = await audioFile.arrayBuffer();
-    const audioBuffer = Buffer.from(bytes);
+    if (!apiKey) {
+      console.error('[SPEECH-TO-TEXT] No Google API key found');
+      return NextResponse.json({
+        success: false,
+        error: 'API key not configured',
+        transcript: ''
+      }, { status: 500 });
+    }
 
-    // Initialize Speech client
-    const client = new SpeechClient({
-        apiKey: process.env.GOOGLE_CLOUD_API_KEY || process.env.FACT_GEMINI_API_KEY
-    });
+    // Determine encoding and sample rate
+    const audioConfig = getAudioConfig(mimeType);
+    const base64Audio = audioBuffer.toString('base64');
 
-    // Determine encoding from file type
-const encoding = getAudioEncoding(audioFile.type);
+    console.log('[SPEECH-TO-TEXT] Audio configuration:');
+    console.log('  - Encoding:', audioConfig.encoding);
+    console.log('  - Sample rate:', audioConfig.sampleRate);
+    console.log('  - Base64 length:', base64Audio.length);
 
-console.log('🔊 Audio encoding:', encoding);
-console.log('📄 File name:', audioFile.name);
+    // Call Google Speech-to-Text REST API
+    console.log('[SPEECH-TO-TEXT] Calling Google Speech-to-Text API...');
+    
+    // For WhatsApp audio (OGG), try multiple encoding strategies
+    const isWhatsAppAudio = contentType.includes('application/json') && mimeType.includes('ogg');
+    
+    let data: any = null;
+    let lastError: string = '';
+    
+    if (isWhatsAppAudio) {
+      // Try different configurations for WhatsApp OGG audio
+      const encodingAttempts = [
+        { encoding: 'OGG_OPUS', sampleRateHertz: 16000 },
+        { encoding: 'OGG_OPUS', sampleRateHertz: 48000 },
+        { encoding: 'MULAW', sampleRateHertz: 8000 },
+      ];
+      
+      for (const attempt of encodingAttempts) {
+        console.log('[SPEECH-TO-TEXT] Trying config:', JSON.stringify(attempt, null, 2));
+        
+        const response = await fetch(
+          `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              config: {
+                ...attempt,
+                languageCode: 'en-US',
+                enableAutomaticPunctuation: true,
+                model: 'default',
+              },
+              audio: {
+                content: base64Audio,
+              },
+            }),
+          }
+        );
+        
+        console.log('[SPEECH-TO-TEXT] Response status:', response.status);
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('[SPEECH-TO-TEXT] Response:', JSON.stringify(result, null, 2));
+          
+          // Check if we got actual transcript
+          if (result.results && result.results.length > 0) {
+            const transcript = result.results
+              .map((r: any) => r.alternatives?.[0]?.transcript)
+              .filter(Boolean)
+              .join(' ');
+            
+            if (transcript && transcript.trim()) {
+              console.log('[SPEECH-TO-TEXT] SUCCESS with config:', JSON.stringify(attempt, null, 2));
+              data = result;
+              break;
+            } else {
+              console.log('[SPEECH-TO-TEXT] Empty transcript with this config, trying next...');
+            }
+          } else {
+            console.log('[SPEECH-TO-TEXT] No results with this config, trying next...');
+          }
+        } else {
+          const errorData = await response.json();
+          lastError = errorData.error?.message || 'Unknown error';
+          console.log('[SPEECH-TO-TEXT] Failed with this config:', lastError);
+        }
+      }
+      
+      if (!data) {
+        console.error('[SPEECH-TO-TEXT] All encoding attempts failed. Last error:', lastError);
+        return NextResponse.json({
+          success: false,
+          error: `Could not process audio. Last error: ${lastError}`,
+          transcript: ''
+        }, { status: 500 });
+      }
+    } else {
+      // For web UI (WebM), use standard config
+      const config = {
+        encoding: audioConfig.encoding,
+        sampleRateHertz: audioConfig.sampleRate,
+        languageCode: 'en-US',
+        enableAutomaticPunctuation: true,
+        model: 'default',
+        useEnhanced: true,
+      };
+      
+      console.log('[SPEECH-TO-TEXT] Request config:', JSON.stringify(config, null, 2));
+      
+      const response = await fetch(
+        `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            config: config,
+            audio: {
+              content: base64Audio,
+            },
+          }),
+        }
+      );
 
-// Special handling for Opus files (WhatsApp audio)
-let sampleRateHertz;
-if (encoding === 'OGG_OPUS' || audioFile.name.endsWith('.opus')) {
-  // Opus files from WhatsApp typically use 16000 Hz
-  sampleRateHertz = 16000;
-  console.log('🎤 Detected Opus file, using 16000 Hz');
-} else if (encoding === 'WEBM_OPUS') {
-  // WebM from browser recording uses 48000 Hz
-  sampleRateHertz = 48000;
-  console.log('🌐 Detected WebM recording, using 48000 Hz');
-} else {
-  // For other formats, let API auto-detect
-  sampleRateHertz = undefined;
-  console.log('🔧 Auto-detecting sample rate');
-}
+      console.log('[SPEECH-TO-TEXT] Google API response status:', response.status);
 
-// Configure speech recognition
-const audio = {
-  content: audioBuffer.toString('base64'),
-};
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[SPEECH-TO-TEXT] Google API error:', JSON.stringify(errorData, null, 2));
+        
+        return NextResponse.json({
+          success: false,
+          error: `Google Speech API error: ${errorData.error?.message || 'Unknown error'}`,
+          transcript: ''
+        }, { status: 500 });
+      }
 
-const config = {
-  encoding: encoding,
-  sampleRateHertz: sampleRateHertz,
-  languageCode: 'en-US',
-  alternativeLanguageCodes: ['hi-IN', 'ta-IN', 'te-IN', 'mr-IN'],
-  enableAutomaticPunctuation: true,
-  enableWordTimeOffsets: true,
-  model: 'default',
-  useEnhanced: true,
-};
+      data = await response.json();
+      console.log('[SPEECH-TO-TEXT] Google API response:', JSON.stringify(data, null, 2));
+    }
 
-    const request = {
-      audio: audio,
-      config: config,
-    };
-
-    console.log('🔄 Sending to Speech-to-Text API...');
-
-    // Recognize speech
-    const [response] = await client.recognize(request);
-
-    if (!response.results || response.results.length === 0) {
+    if (!data.results || data.results.length === 0) {
+      console.log('[SPEECH-TO-TEXT] No speech detected in audio');
       return NextResponse.json({
         success: false,
         error: 'No speech detected in audio',
@@ -81,75 +208,68 @@ const config = {
       });
     }
 
-    // Extract transcript
-    const transcription = response.results
-      .map(result => result.alternatives?.[0]?.transcript || '')
+    const transcription = data.results
+      .map((result: any) => result.alternatives?.[0]?.transcript)
       .filter(Boolean)
       .join(' ');
 
-    console.log('✅ Transcription complete:', transcription.substring(0, 100) + '...');
+    if (!transcription || transcription.trim() === '') {
+      console.log('[SPEECH-TO-TEXT] Empty transcription after processing');
+      return NextResponse.json({
+        success: false,
+        error: 'No speech detected in audio',
+        transcript: ''
+      });
+    }
 
-    // Extract word-level timestamps (useful for verification)
-    const words = response.results
-      .flatMap(result => result.alternatives?.[0]?.words || [])
-      .map(word => ({
-        word: word.word,
-        startTime: word.startTime?.seconds || 0,
-        endTime: word.endTime?.seconds || 0,
-        confidence: word.confidence || 0
-      }));
+    console.log('[SPEECH-TO-TEXT] Transcription successful:', transcription);
 
     return NextResponse.json({
       success: true,
       transcript: transcription,
-      confidence: response.results[0]?.alternatives?.[0]?.confidence || 0,
-      language: response.results[0]?.languageCode || 'en-US',
-      words: words,
-      audioLength: audioFile.size
+      transcription: transcription
     });
 
   } catch (error: any) {
-    console.error('❌ Speech-to-Text error:', error);
-    
-    return NextResponse.json(
-      { 
-        success: false,
-        error: error.message || 'Failed to transcribe audio',
-        transcript: ''
-      },
-      { status: 500 }
-    );
+    console.error('[SPEECH-TO-TEXT] Exception:', error.message);
+    console.error('[SPEECH-TO-TEXT] Stack:', error.stack);
+    return NextResponse.json({
+      success: false,
+      error: error.message || 'Transcription failed',
+      transcript: ''
+    }, { status: 500 });
   }
 }
 
-function getAudioEncoding(mimeType: string): any {
-  // Log for debugging
-  console.log('🔍 Detecting encoding for MIME type:', mimeType);
+function getAudioConfig(mimeType: string): { encoding: string; sampleRate: number } {
+  console.log('[SPEECH-TO-TEXT] Detecting encoding for MIME type:', mimeType);
   
-  const encodingMap: { [key: string]: string } = {
-    'audio/wav': 'LINEAR16',
-    'audio/wave': 'LINEAR16',
-    'audio/x-wav': 'LINEAR16',
-    'audio/webm': 'WEBM_OPUS',
-    'audio/webm;codecs=opus': 'WEBM_OPUS',
-    'audio/ogg': 'OGG_OPUS',
-    'audio/ogg;codecs=opus': 'OGG_OPUS',
-    'audio/opus': 'OGG_OPUS', // ADD THIS
-    'audio/mp3': 'MP3',
-    'audio/mpeg': 'MP3',
-    'audio/mp4': 'MP3',
-    'audio/flac': 'FLAC',
-    'audio/x-flac': 'FLAC',
-  };
-
-  const encoding = encodingMap[mimeType.toLowerCase()];
+  const lowerMime = mimeType.toLowerCase();
   
-  if (encoding) {
-    console.log('✅ Detected encoding:', encoding);
-    return encoding;
+  if (lowerMime.includes('ogg') || lowerMime.includes('opus')) {
+    return { encoding: 'OGG_OPUS', sampleRate: 48000 };
   }
   
-  // Fallback: check file extension if mime type not recognized
-  console.log('⚠️ Unknown MIME type, using LINEAR16 as fallback');
-  return 'LINEAR16';
+  if (lowerMime.includes('webm')) {
+    return { encoding: 'WEBM_OPUS', sampleRate: 48000 };
+  }
+  
+  if (lowerMime.includes('mp3') || lowerMime.includes('mpeg')) {
+    return { encoding: 'MP3', sampleRate: 44100 };
+  }
+  
+  if (lowerMime.includes('wav')) {
+    return { encoding: 'LINEAR16', sampleRate: 16000 };
+  }
+  
+  if (lowerMime.includes('flac')) {
+    return { encoding: 'FLAC', sampleRate: 44100 };
+  }
+  
+  if (lowerMime.includes('m4a') || lowerMime.includes('mp4') || lowerMime.includes('aac')) {
+    return { encoding: 'MP3', sampleRate: 44100 };
+  }
+  
+  console.log('[SPEECH-TO-TEXT] Unknown format, defaulting to OGG_OPUS');
+  return { encoding: 'OGG_OPUS', sampleRate: 48000 };
 }
