@@ -14,6 +14,7 @@ import {
 } from './types';
 import { InputTypeSelector } from './InputTypeSelector';
 import { ImageUpload } from './ImageUpload';
+import { VideoUpload } from './VideoUpload';
 import { TextInput } from './TextInput';
 import { ExtensionControls } from './ExtensionControls';
 import { LanguageSelector } from './LanguageSelector';
@@ -370,13 +371,10 @@ function FactCheckTool() {
     }
   };
 
-  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setVideoFile(file);
-      setVideoPreview(URL.createObjectURL(file));
-      setInput("");
-    }
+  const handleVideoFileChange = (file: File) => {
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
+    setInput("");
   };
 
   const handleAudioCapture = (blob: Blob, isRecorded: boolean) => {
@@ -805,23 +803,10 @@ function FactCheckTool() {
                 onImageChange={handleImageChange}
               />
             ) : inputType === "video" ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                  <p className="text-yellow-400 text-sm">
-                    ⚠️ <strong>Note:</strong> Direct video links (YouTube, Vimeo, etc.) are not supported. 
-                    Please upload a video file instead.
-                  </p>
-                </div>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoFileChange}
-                  className="mt-2"
-                />
-                {videoPreview && (
-                  <video controls src={videoPreview} className="max-h-48 mx-auto rounded-lg" />
-                )}
-              </div>
+              <VideoUpload
+                videoPreview={videoPreview}
+                onVideoChange={handleVideoFileChange}
+              />
             ) : inputType === "audio" ? (
               <AudioInput onAudioCapture={handleAudioCapture} />
             ) : (
