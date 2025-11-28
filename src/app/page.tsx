@@ -8,9 +8,14 @@ import WhatsAppExtension from '@/components/WhatsAppExtension';
 import Footer from '@/components/Footer';
 import TrendingNews from '@/components/TrendingNews';
 import CrisisBanner from '@/components/CrisisBanner';
+import RegisterServiceWorker from './register-sw';
+import InstallPWA from '@/components/InstallPWA';
 
 export default function Home() {
   return (
+    <>
+    <RegisterServiceWorker />
+    <InstallPWA />
     <main className="min-h-screen bg-background">
       <Navbar />
       <div className="pt-20">
@@ -46,5 +51,6 @@ export default function Home() {
         </section>
       </div>
     </main>
+    </>
   );
 }
