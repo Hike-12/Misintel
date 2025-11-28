@@ -7,6 +7,8 @@ const nextConfig = {
   compress: true,
   swcMinify: true,
   poweredByHeader: false,
+  reactStrictMode: true,
+  swcMinify: true,
   
   // Image optimization
   images: {

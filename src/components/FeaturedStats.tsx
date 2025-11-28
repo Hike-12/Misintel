@@ -10,8 +10,8 @@ import SilverEarth from "./SplineGlobe";
 function FeaturedStats() {
   const stats = [
     {
-      value: "4",
-      label: "AI Models",
+      value: "Fast",
+      label: "Detection",
       icon: <Cpu className="h-4 w-4 text-black dark:text-neutral-400" />,
       area: "md:[grid-area:1/1/2/4]"
     },
@@ -81,7 +81,7 @@ function FeaturedStats() {
       </div>
     </div>
   }
-  description="Instant verification results in under 3 seconds with our optimized pipeline."
+  description="Delivers real-time verification through our optimized AI pipeline."
   slim={true}
 />
           {/* Top Right */}
