@@ -502,7 +502,18 @@ function FactCheckTool() {
           throw new Error("Please provide a video URL or upload a video file.");
         }
 
-        let payload: any = { prompt: "Analyze this video for misinformation." };
+        let payload: any = { prompt: `Analyze this video and determine if it contains misinformation or is factually accurate.
+
+Respond in this exact format:
+
+**Verdict: [Likely True/Likely False] ([confidence]% confidence)**
+
+[Brief explanation of why the content is true or false]
+
+**Key Indicators:**
+- [List specific red flags or verification points]
+
+Focus on whether the VIDEO CONTENT ITSELF is factually true or false, not whether an analysis of it is correct.` };
 
         if (videoFile) {
           const reader = new FileReader();
@@ -523,14 +534,21 @@ function FactCheckTool() {
               throw new Error(data.error);
             }
 
+            // Parse the verdict from the analysis text
+            const analysis = data.analysis || "No analysis generated.";
+            const verdictMatch = analysis.match(/Verdict:\s*(Likely\s+(?:True|False))\s*\((\d+)%/i);
+            
+            const isFake = verdictMatch ? verdictMatch[1].toLowerCase().includes('false') : false;
+            const confidence = verdictMatch ? parseInt(verdictMatch[2]) : 0;
+
             setResult({
-              isFake: false,
-              confidence: 85,
-              summary: data.analysis || "No analysis generated.",
-              reasons: data.groundingMetadata ? ["Analysis includes web search verification"] : ["AI-powered video content analysis"],
-              sources: data.groundingMetadata?.groundingChunks?.map((chunk: any) => chunk.web?.uri).filter(Boolean) || [],
-              inputText: videoFile.name,
-              inputUrl: "",
+              isFake: isFake,
+              confidence: confidence,
+              summary: analysis,
+              reasons: [],
+              sources: [],
+              inputText: input.trim(),
+              inputUrl: input.trim(),
               verificationFlow: [],
               author: undefined,
             });
