@@ -351,15 +351,19 @@
       console.log('Misintel: Page title:', title);
       console.log('Misintel: Page URL:', url);
       
-      // Send to backend for analysis
-      const response = await fetch(`https://misintel.vercel.app/api/scan-page`, {
+      // Send to backend for analysis - use localhost for development
+      const apiBase = 'http://localhost:3000';
+      
+      const response = await fetch(`${apiBase}/api/scan-page`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, url, title }),
       });
       
       if (!response.ok) {
-        throw new Error('Analysis failed');
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        throw new Error(`Analysis failed: ${response.status} - ${errorText}`);
       }
       
       const data = await response.json();
@@ -370,22 +374,35 @@
       
       const { analysis } = data;
       
+      // Track which items were successfully highlighted
+      const actuallyHighlightedContent = [];
+      
       // Highlight suspicious content
       console.log('Attempting to highlight', analysis.suspiciousContent.length, 'items');
       analysis.suspiciousContent.forEach((item, idx) => {
         console.log(`Item ${idx + 1} [${item.severity}]: "${item.text.substring(0, 60)}..."`);
+        const initialHighlightCount = highlights.length;
         const nodes = findTextNodes(item.text, 5);
         if (nodes.length === 0) {
           console.warn(`⚠️ Could not find text nodes for: "${item.text.substring(0, 60)}..."`);
+        } else {
+          nodes.forEach(node => {
+            highlightText(node, item.text, item.severity, item.reason);
+          });
+          // Only count items that were actually highlighted
+          if (highlights.length > initialHighlightCount) {
+            actuallyHighlightedContent.push(item);
+          }
         }
-        nodes.forEach(node => {
-          highlightText(node, item.text, item.severity, item.reason);
-        });
       });
       
       console.log('✓ Highlighting complete. Total highlights applied:', highlights.length);
+      console.log(`Successfully highlighted ${actuallyHighlightedContent.length} out of ${analysis.suspiciousContent.length} items`);
       
-      // Show summary
+      // Update analysis to only show what was actually highlighted
+      analysis.suspiciousContent = actuallyHighlightedContent;
+      
+      // Show summary with corrected counts
       showSummaryPanel(analysis);
       
       console.log('Misintel: Scan complete. Found', analysis.suspiciousContent.length, 'suspicious items');
