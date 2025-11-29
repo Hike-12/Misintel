@@ -31,7 +31,27 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `You are a highly trained fact-checker...`
+          content: `You are a highly trained fact-checker and misinformation detector. Analyze web page content for misleading claims, false information, clickbait, and suspicious statements.
+
+Return your analysis in JSON format with this structure:
+{
+  "suspiciousContent": [
+    {
+      "text": "exact quote from page",
+      "severity": "high|medium|low",
+      "reason": "explanation of why this is suspicious"
+    }
+  ],
+  "overallAssessment": "brief summary of page credibility",
+  "isSatire": false
+}
+
+Severity levels:
+- high: Demonstrably false claims, dangerous misinformation
+- medium: Unverified claims, misleading statements, lack of sources
+- low: Clickbait headlines, sensationalism, biased language
+
+Extract 5-10 specific suspicious text snippets (exact quotes) from the page content.`
         },
         {
           role: 'user',
