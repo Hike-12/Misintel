@@ -6,6 +6,7 @@ import { cn } from "@/utils/cn";
 import { useNodesState, useEdgesState } from "reactflow";
 import html2canvas from "html2canvas";
 import { type LanguageCode } from '@/lib/translation-types';
+import { toast } from "sonner";
 
 import { 
   AnalysisResult, 
@@ -82,6 +83,9 @@ function FactCheckTool() {
   // Audio states
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioPreview, setAudioPreview] = useState<string>("");
+
+  // Alert dialog state
+  const [showClearDialog, setShowClearDialog] = useState(false);
 
   const isExtension =
     typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id;
@@ -715,9 +719,9 @@ function FactCheckTool() {
     } else {
       try {
         await navigator.clipboard.writeText(shareText);
-        alert("Results copied to clipboard!");
+        toast.success("Results copied to clipboard!");
       } catch (error) {
-        alert("Failed to copy to clipboard");
+        toast.error("Failed to copy to clipboard");
       }
     }
   };

@@ -1,5 +1,16 @@
 import { AnalysisResult } from './types';
 import { Trash2, X, Clock } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface HistoryListProps {
   history: AnalysisResult[];
@@ -27,13 +38,28 @@ export function HistoryList({
             </h3>
           </div>
           {history.length > 0 && (
-            <button
-              onClick={onClearAllHistory}
-              className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1.5 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Clear All
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1.5 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10">
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear All
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-neutral-900 border-neutral-800">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-neutral-100">Clear all history?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-neutral-400">
+                    This will permanently delete all {history.length} saved fact-checks from your history. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-neutral-800 text-neutral-200 hover:bg-neutral-700 border-neutral-700">Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={onClearAllHistory} className="bg-red-500 hover:bg-red-600 text-white">
+                    Clear All
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
         <div className="grid grid-cols-1 gap-2.5">
