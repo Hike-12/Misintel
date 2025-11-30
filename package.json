@@ -19,7 +19,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@splinetool/react-spline": "^4.1.0",
-    "@splinetool/runtime": "^1.10.51",
+    "@splinetool/runtime": "^1.10.52",
     "@tabler/icons-react": "^3.34.1",
     "@types/three": "^0.179.0",
     "@upstash/redis": "^1.35.6",
