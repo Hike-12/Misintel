@@ -45,7 +45,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.179.1",
-    "twilio": "^5.10.0"
+    "twilio": "^5.10.1"
   },
   "devDependencies": {
     "@types/dom-mediacapture-record": "^1.0.22",
